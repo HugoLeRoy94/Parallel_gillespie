@@ -1,0 +1,4 @@
+*.hdf
+__pycache__/
+*.png
+*.svg
