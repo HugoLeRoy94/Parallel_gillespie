@@ -12,7 +12,9 @@ import tables as pt
 import ctypes
 import sys
 sys.path.append('/home/hcleroy/PostDoc/aging_condensates/Simulation/Gillespie/Gillespie_backend/')
+sys.path.append('/home/hcleroy/aging_condensate/Gillespie/Gillespie_backend')
 sys.path.append('/home/hugo/PostDoc/aging_condensates/Gillespie/Gillespie_backend/')
+
 import Gillespie_backend as gil
 
 def compute(gillespie,output,step_tot,check_steps,coarse_grained_step,cluster_arg,MSD_arg,ISF_arg,NRG_arg,PCF_arg,PCF_L_arg):
