@@ -56,46 +56,60 @@ class CustomHDF5Reader:
         return measurements
     def list_groups(self):
         """
-        List all the groups at the root of the HDF5 file, which correspond to seed_hex values.
+        Return the names of all the groups at the root of the HDF5 file as a list of strings.
+        Each group name corresponds to a seed_hex value.
         """
+        group_names = []
         try:
-            for group in self.file.root._v_groups:
-                print(f"Group/Seed Hex: {group}")
+            # Iterate through all groups under the root and collect their names
+            for group in self.file.root._f_iter_nodes('Group'):
+                group_names.append(group._v_name)
         except Exception as e:
             print(f"Error listing groups: {e}")
-    def print_file_header(self):
-        """
-        Print the header (root attributes) of the HDF5 file.
-        """
-        try:
-            # Access the root group of the HDF5 file
-            root_group = self.file.root
-            # Iterate through all attributes of the root group
-            print("File Header:")
-            for attr in root_group._v_attrs._f_list():
-                value = root_group._v_attrs[attr]
-                print(f"{attr}: {value}")
-        except Exception as e:
-            print(f"Error accessing file header: {e}")
-
-
-# Example usage
-#if __name__ == "__main__":
-#    filepath = 'path_to_your_file.hdf5'
-#    reader = CustomHDF5Reader(filepath)
-#
-#    reader.open()
-#    try:
-#        # Assuming you have a seed hex value and you're interested in 'MSD' measurements
-#        seed_hex = '0xb711b'
-#        measurement_type = 'MSD'
-#        data = reader.get_measurement_data(seed_hex, measurement_type)
-#        if data is not None:
-#            print(f"Data for {measurement_type} with seed {seed_hex}: {data}")
-#        
-#        # List all measurements for a given seed
-#        measurements = reader.list_measurements(seed_hex)
-#        print(f"Available measurements for seed {seed_hex}: {measurements}")
-#
-#    finally:
-#        reader.close()
+        return group_names
+    def get_header_attributes(self):
+        header_string = self.get_file_header()
+        # Initialize an empty dictionary to store the extracted parameters
+        parameters_dict = {}
+        
+        # Split the header string into lines
+        lines = header_string.split('\n')
+        
+        # Iterate over each line
+        for line in lines:
+            # Check if the line contains an assignment (indicated by '=')
+            if '=' in line:
+                # Split the line into key and value parts
+                key, value = line.split('=', 1)
+                
+                # Clean up whitespace and convert the value to the appropriate type
+                key = key.strip()
+                value = value.strip()
+                
+                # Attempt to evaluate numerical values and tuples
+                try:
+                    # This attempts to convert strings that represent numbers or tuples into actual numerical values or tuples
+                    value = eval(value)
+                except (NameError, SyntaxError):
+                    # If eval fails (e.g., because the value is a string that doesn't represent a number or tuple), leave it as a string
+                    pass
+                
+                # Store the key-value pair in the dictionary
+                parameters_dict[key] = value
+        
+        return parameters_dict
+    def get_file_header(self):
+            """
+            Return the header (root attributes) of the HDF5 file as a string.
+            """
+            header_str = "File Header:\n"
+            try:
+                # Access the root group of the HDF5 file
+                root_group = self.file.root
+                # Iterate through all attributes of the root group and concatenate them into the header string
+                for attr in root_group._v_attrs._f_list():
+                    value = root_group._v_attrs[attr]
+                    header_str += f"{attr}: {value}\n"
+            except Exception as e:
+                header_str += f"Error accessing file header: {e}\n"
+            return header_str

@@ -3,8 +3,8 @@ import copy
 
 class MSD:
     def __init__(self,step_tot,check_steps,coarse_grained_step,gillespie):
-        self.msd_time = np.zeros((step_tot // check_steps//coarse_grained_step, check_steps//coarse_grained_step, 3), dtype=float)
-        self.msd_tot = np.zeros((step_tot//coarse_grained_step, 2), dtype=float)
+        self.msd_time = np.zeros((step_tot // check_steps, check_steps//coarse_grained_step), dtype=float)
+        self.msd_tot = np.zeros((step_tot//coarse_grained_step), dtype=float)
         self.gillespie = gillespie
         self.index_tot = 0
         self.sim_initial_positions = copy.copy(gillespie.get_r(periodic=True))

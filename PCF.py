@@ -8,6 +8,7 @@ class PCF:
         self.num_bins = num_bins
         self.max_distance = max_distance
         counts,bin_edges = histogram_float([],bins=self.num_bins,range=(0,self.max_distance))
+        self.PCF_counts = np.zeros((step_tot // check_steps,num_bins,2) )
         self.bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2
         self.bin_widths = bin_edges[1:] - bin_edges[:-1]
         self.shell_volumes = (4 / 3) * np.pi * ((self.bin_centers + self.bin_widths)**3 - self.bin_centers**3)
@@ -23,8 +24,10 @@ class PCF:
         dist_matrix = distance_matrix(self.gillespie.get_r(),self.gillespie.get_r())
         self.dist = dist_matrix[np.triu_indices_from(dist_matrix, k=1)]
         self.prev_hist, bin_edges = histogram_float(self.dist, bins=self.num_bins, range=(0, self.max_distance))
-    def end_check_step(self,output,i):
+    def end_check_step(self,i):
         self.counts = self.counts / (self.time * self.shell_volumes*self.dist.shape[0])
         self.t_tot+=self.time
-        output.put(('create_array',('/'+'S'+hex(self.gillespie.seed),'PCF_'+str(i),np.stack((self.bin_centers,self.counts), axis=-1))))
+        self.PCF_counts[i] = np.stack((self.bin_centers,self.counts), axis=-1)
+    def close(self,output):
+        output.put(('create_array',('/'+'S'+hex(self.gillespie.seed),'PCF',self.PCF_counts)))
         

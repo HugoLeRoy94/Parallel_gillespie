@@ -21,5 +21,5 @@ class NRG:
         self.Energy[self.index]/=self.t_tot
         self.index+=1
     def close(self,output):
-        output.put(('create_array', ('/'+'S'+hex(self.gillespie.seed),'Energy' , self.Energy)))
+        output.put(('create_array', ('/'+'S'+hex(self.gillespie.seed),'NRG' , self.Energy)))
         output.put(('create_array',('/'+'S'+hex(self.gillespie.seed),'moves_1' , np.array([self.move1_count/self.step_tot]))))

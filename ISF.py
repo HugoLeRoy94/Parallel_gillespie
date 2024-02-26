@@ -31,7 +31,7 @@ class ISF:
         def __init__(self,step_tot,check_steps,coarse_grained_step,gillespie,q_norm,num_q_samples):
             self.q_vectors = q_norm * uniform_sphere_samples(num_q_samples)            
             self.gillespie = gillespie
-            self.isf_time = np.zeros((step_tot//check_steps//coarse_grained_step,check_steps//coarse_grained_step),dtype=float)
+            self.isf_time = np.zeros((step_tot//check_steps,check_steps//coarse_grained_step),dtype=float)
         def compute(self,time,move,i,t):
             self.isf_time[i,t] = np.linalg.norm(Compute_Average_ISF(self.gillespie.get_r(periodic=True),self.initial_positions,self.q_vectors))
         def start_check_step(self):

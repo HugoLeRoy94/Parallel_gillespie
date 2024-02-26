@@ -27,13 +27,13 @@ def compute(gillespie,output,step_tot,check_steps,coarse_grained_step,cluster_ar
     pcf = PCF(step_tot,check_steps,coarse_grained_step,gillespie,*PCF_arg)
     time_track = Time(step_tot,check_steps,coarse_grained_step,gillespie)
 
-    for i in range(step_tot//check_steps//coarse_grained_step):        
+    for i in range(step_tot//check_steps):
         isf.start_check_step()
         msd.start_check_step()
         pcf.start_check_step()
-        time_track.start_check_step()
+        time_track.start_check_step(i)
         for t in range(check_steps//coarse_grained_step):
-            time_track.start_coarse_step()
+            #time_track.start_coarse_step()
             cluster.start_coarse_step()
             nrg.start_coarse_step()
             for steps in range(coarse_grained_step):
@@ -48,10 +48,11 @@ def compute(gillespie,output,step_tot,check_steps,coarse_grained_step,cluster_ar
             time_track.end_coarse_step()
             nrg.end_coarse_step()
             cluster.end_coarse_step()
-        time_track.end_check_step(i,t)
-        pcf.end_check_step(output,i)
+            time_track.end_check_step(i,t)
+        pcf.end_check_step(i)
         isf.end_check_step()
         msd.end_check_step()
+    pcf.close(output)
     cluster.close(output)
     isf.close(output)
     msd.close(output)
@@ -126,10 +127,27 @@ def parallel_evolution(args, step_tot, check_steps,coarse_grained_step,filename,
 
 def make_header(args, sim_arg):
     """
-    Create a header string for the HDF5 file.
+    Create a header string for the HDF5 file, correctly indicating the value of the different variables.
     """
-    header = f"This file computes the mean squared displacement. Parameters of the simulation:\n"
-    labels = ['ell_tot', 'Energy', 'kdiff', 'seed', 'Nlinker', 'dimension', 'step_tot', 'check_steps','q_norm']
-    values = args + sim_arg
-    header += '\n'.join([f"{label} = {value}" for label, value in zip(labels, values)])
+    header = "This HDF5 file contains the results of a  Gillespie simulation, focusing on properties such as (MSD), (ISF),  (NRG), (PCF) alongside clustering behavior. Each simulation run is uniquely identified by a hexadecimal seed value,\n"
+    header+="How to Navigate the Data:\n"
+    header+="Groups: Each top-level group in this file is named after a seed value in hexadecimal format (0x...) representing the seed.\n"
+    header+="Datasets within Groups: Within each group, you'll find datasets corresponding to different measurements taken during the simulation, such as MSD, ISF, NRG, PCF, and cluster data. These are labeled according to the type of measurement.\n"
+    header+="Reading Data: To access the data, navigate to the desired group (seed) and then select the measurement dataset within that group. The data format and structure may vary by measurement type, typically represented in multidimensional arrays where dimensions correspond to simulation time steps, spatial dimensions, or specific parameters like wavevector magnitudes for ISF.\n"
+    header+="This dataset is designed for comprehensive analysis of the modeled system, allowing for deep dives into both its dynamic and structural properties. For further details on the simulation parameters and setup, refer to the header section at the beginning of this file.:\n"
+
+    # Assuming the first element in args is representative for all Gillespie parameters
+    if args:
+        first_set_args = args[0]  # Taking the first set of parameters as representative
+        labels_gillespie = ['ell_tot', 'Energy', 'kdiff', 'seed', 'Nlinker', 'dimension']
+        header += '\n'.join([f"{label} = {value}" for label, value in zip(labels_gillespie, first_set_args)])
+
+    # Adding simulation-wide parameters from sim_arg
+    labels_sim = ['step_tot', 'check_steps', 'coarse_grained_step', 'cluster_max_distance', 'MSD_args', 'ISF_q_norm', 'ISF_q_num_sample', 'NRG_args', 'PCF_max_distance', 'PCF_num_bins']
+    
+    # Ensure sim_arg is unpacked correctly according to how you structure it.
+    # This example directly uses sim_arg assuming it is in the correct order matching labels_sim.
+    header += '\n' + '\n'.join([f"{label} = {value}" for label, value in zip(labels_sim, sim_arg)])
+
     return header
+
