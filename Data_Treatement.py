@@ -13,9 +13,9 @@ class Data_Treatement:
             # if the data is a scalar: data.shape = (Nsample,step_tot//coarse_steps)
             # if it is a function: data.shape = (Nsample,step_tot//check_steps,check_steps//coarse_stetps)
             self.data = np.array([self.Read.get_measurement_data(grp,data_type) for grp in self.Read.list_groups()])
-        if self.data[0].shape == self.Read.get_measurement_data(self.Read.list_groups()[0],"Check_Time").shape:
+        if self.data[0].shape[0] == self.Read.get_measurement_data(self.Read.list_groups()[0],"Check_Time").shape[0]:
             TimeType = "Check_Time"
-        elif self.data[0].shape == self.Read.get_measurement_data(self.Read.list_groups()[0],"Coarse_Time").shape:
+        elif self.data[0].shape[0] == self.Read.get_measurement_data(self.Read.list_groups()[0],"Coarse_Time").shape[0]:
             TimeType = "Coarse_Time"
         else:
             print(self.data[0].shape)

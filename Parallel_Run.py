@@ -3,6 +3,7 @@ from ISF import ISF
 from MSD import MSD
 from Energy import NRG
 from PCF import PCF
+from PCF import PCF_L
 from Time import Time
 
 import numpy as np
@@ -14,7 +15,7 @@ sys.path.append('/home/hcleroy/PostDoc/aging_condensates/Simulation/Gillespie/Gi
 sys.path.append('/home/hugo/PostDoc/aging_condensates/Gillespie/Gillespie_backend/')
 import Gillespie_backend as gil
 
-def compute(gillespie,output,step_tot,check_steps,coarse_grained_step,cluster_arg,MSD_arg,ISF_arg,NRG_arg,PCF_arg):
+def compute(gillespie,output,step_tot,check_steps,coarse_grained_step,cluster_arg,MSD_arg,ISF_arg,NRG_arg,PCF_arg,PCF_L_arg):
     """
     The simulation runs a total number of step_tot steps. Every measurement is first coarse grained to the number of coarse_grained steps.
     For measurement that measure the aging of time evolution measurements like MSD and ISF, check_steps correspond to the window of 
@@ -25,12 +26,14 @@ def compute(gillespie,output,step_tot,check_steps,coarse_grained_step,cluster_ar
     msd = MSD(step_tot,check_steps,coarse_grained_step,gillespie,*MSD_arg)
     nrg = NRG(step_tot,check_steps,coarse_grained_step,gillespie,*NRG_arg)
     pcf = PCF(step_tot,check_steps,coarse_grained_step,gillespie,*PCF_arg)
+    pcf_L = PCF_L(step_tot,check_steps,coarse_grained_step,gillespie,*PCF_L_arg)
     time_track = Time(step_tot,check_steps,coarse_grained_step,gillespie)
 
     for i in range(step_tot//check_steps):
         isf.start_check_step()
         msd.start_check_step()
         pcf.start_check_step()
+        pcf_L.start_check_step()
         time_track.start_check_step(i)
         for t in range(check_steps//coarse_grained_step):
             #time_track.start_coarse_step()
@@ -41,6 +44,7 @@ def compute(gillespie,output,step_tot,check_steps,coarse_grained_step,cluster_ar
                 time_track.compute(time,move)
                 cluster.compute(time,move)
                 pcf.compute(time,move)
+                pcf_L.compute(time,move)
                 nrg.compute(time,move)
             isf.compute(time,move,i,t)
             msd.compute(time,move,i,t)
@@ -50,9 +54,11 @@ def compute(gillespie,output,step_tot,check_steps,coarse_grained_step,cluster_ar
             cluster.end_coarse_step()
             time_track.end_check_step(i,t)
         pcf.end_check_step(i)
+        pcf_L.end_check_step(i)
         isf.end_check_step()
         msd.end_check_step()
     pcf.close(output)
+    pcf_L.close(output)
     cluster.close(output)
     isf.close(output)
     msd.close(output)
@@ -60,14 +66,14 @@ def compute(gillespie,output,step_tot,check_steps,coarse_grained_step,cluster_ar
     time_track.close(output)
 
 
-def run_simulation(inqueue, output, step_tot, check_steps,coarse_grained_step,cluster_arg,MSD_arg,ISF_arg,NRG_arg,PCF_arg):
+def run_simulation(inqueue, output, step_tot, check_steps,coarse_grained_step,cluster_arg,MSD_arg,ISF_arg,NRG_arg,PCF_arg,PCF_L_arg):
     """
     Run the simulation for each set of parameters fetched from the input queue.
     """
     for args in iter(inqueue.get, None):
         gillespie = initialize_gillespie(*args)
         output.put(('create_group',('/','S'+hex(gillespie.seed))))
-        compute(gillespie, output, step_tot, check_steps,coarse_grained_step,cluster_arg,MSD_arg,ISF_arg,NRG_arg,PCF_arg)
+        compute(gillespie, output, step_tot, check_steps,coarse_grained_step,cluster_arg,MSD_arg,ISF_arg,NRG_arg,PCF_arg,PCF_L_arg)
 
     
 def handle_output(output, filename, header):
@@ -92,7 +98,7 @@ def initialize_gillespie(ell_tot, Energy, kdiff, seed, Nlinker, dimension):
     return gil.Gillespie(ell_tot=ell_tot, rho0=0., BindingEnergy=Energy, kdiff=kdiff,
                          seed=seed, sliding=False, Nlinker=Nlinker, old_gillespie=None, dimension=dimension)
 
-def parallel_evolution(args, step_tot, check_steps,coarse_grained_step,filename,cluster_arg,MSD_arg,ISF_arg,NRG_arg,PCF_arg):
+def parallel_evolution(args, step_tot, check_steps,coarse_grained_step,filename,cluster_arg,MSD_arg,ISF_arg,NRG_arg,PCF_arg,PCF_L_arg):
     """
     Coordinate parallel execution of MSD evolution simulations.
     """
@@ -100,12 +106,12 @@ def parallel_evolution(args, step_tot, check_steps,coarse_grained_step,filename,
     output = mp.Queue()
     inqueue = mp.Queue()
     
-    header = make_header(args, [step_tot, check_steps,coarse_grained_step,cluster_arg,MSD_arg,ISF_arg,NRG_arg,PCF_arg])
+    header = make_header(args, [step_tot, check_steps,coarse_grained_step,cluster_arg,MSD_arg,ISF_arg,NRG_arg,PCF_arg,PCF_L_arg])
     proc = mp.Process(target=handle_output, args=(output, filename, header))
     proc.start()
     
     jobs = [mp.Process(target=run_simulation, 
-                       args=(inqueue, output, step_tot, check_steps,coarse_grained_step,cluster_arg,MSD_arg,ISF_arg,NRG_arg,PCF_arg)) 
+                       args=(inqueue, output, step_tot, check_steps,coarse_grained_step,cluster_arg,MSD_arg,ISF_arg,NRG_arg,PCF_arg,PCF_L_arg)) 
                        for _ in range(num_process)]
     
     for job in jobs:
@@ -143,7 +149,7 @@ def make_header(args, sim_arg):
         header += '\n'.join([f"{label} = {value}" for label, value in zip(labels_gillespie, first_set_args)])
 
     # Adding simulation-wide parameters from sim_arg
-    labels_sim = ['step_tot', 'check_steps', 'coarse_grained_step', 'cluster_max_distance', 'MSD_args', 'ISF_q_norm', 'ISF_q_num_sample', 'NRG_args', 'PCF_max_distance', 'PCF_num_bins']
+    labels_sim = ['step_tot', 'check_steps', 'coarse_grained_step', 'cluster_max_distance', 'MSD_args', 'ISF_q_norm', 'ISF_q_num_sample', 'NRG_args', 'PCF_max_distance', 'PCF_num_bins','PCF_L_max_distance','PCF_L_num_bins']
     
     # Ensure sim_arg is unpacked correctly according to how you structure it.
     # This example directly uses sim_arg assuming it is in the correct order matching labels_sim.
