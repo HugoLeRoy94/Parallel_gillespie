@@ -24,4 +24,5 @@ class Time:
     def close(self,output):
         output.put(('create_array',('/S'+hex(self.gillespie.seed),'Coarse_Time',self.total_coarse_grained_time)))
         output.put(('create_array',('/S'+hex(self.gillespie.seed),'Check_Time',self.time_check_steps)))
+        output.put(('create_array',('/S'+hex(self.gillespie.seed),'Time_shift',self.time_shift)))
         
