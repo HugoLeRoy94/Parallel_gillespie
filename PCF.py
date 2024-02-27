@@ -4,22 +4,15 @@ def histogram_float(*args, **kwargs):
     counts, bin_edges = np.histogram(*args, **kwargs)
     return counts.astype(float), bin_edges
 class PCF:
-    def __init__(self,step_tot,check_steps,coarse_grained_step,gillespie,max_distance,num_bins,LOG=False):
+    def __init__(self,step_tot,log_check_points,coarse_grained_steps,gillespie,max_distance,num_bins):
         self.num_bins = num_bins
         self.max_distance = max_distance
-        self.LOG = LOG
-        if LOG:
-            min_distance = 0.1  # Example: set based on your system's smallest meaningful distance
-            self.bin_edges = np.logspace(np.log10(min_distance), np.log10(self.max_distance), self.num_bins + 1)        
-            self.bin_centers = 10**((np.log10(self.bin_edges[:-1]) + np.log10(self.bin_edges[1:])) / 2)
-            self.bin_widths = np.diff(self.bin_edges)
-        else:
-            counts,self.bin_edges = histogram_float([],bins=self.num_bins,range=(0,self.max_distance))
-            self.bin_centers = (self.bin_edges[:-1] + self.bin_edges[1:]) / 2
-            self.bin_widths = self.bin_edges[1:] - self.bin_edges[:-1]
+        counts,self.bin_edges = histogram_float([],bins=self.num_bins,range=(0,self.max_distance))
+        self.bin_centers = (self.bin_edges[:-1] + self.bin_edges[1:]) / 2
+        self.bin_widths = self.bin_edges[1:] - self.bin_edges[:-1]
         #self.shell_volumes = (4 / 3) * np.pi * ((self.bin_centers + self.bin_widths)**3 - self.bin_centers**3)
         self.shell_volumes = 4/3 * np.pi * (self.bin_edges[1:]**3 - self.bin_edges[:-1]**3)
-        self.PCF_counts = np.zeros((step_tot // check_steps,num_bins,2) )
+        self.PCF_counts = np.zeros((len(log_check_points),num_bins,2) )        
         self.gillespie = gillespie
         self.t_tot = 0.
     def start_check_step(self):
@@ -40,19 +33,14 @@ class PCF:
     def close(self,output):
         output.put(('create_array',('/'+'S'+hex(self.gillespie.seed),'PCF',self.PCF_counts)))
 class PCF_L:
-    def __init__(self,step_tot,check_steps,coarse_grained_step,gillespie,max_distance,num_bins,LOG=True):
+    def __init__(self,step_tot,log_check_points,coarse_grained_step,gillespie,max_distance,num_bins):
         self.num_bins = num_bins
         self.max_distance = max_distance
-        if LOG:
-            min_distance = 1.  # Example: set based on your system's smallest meaningful distance
-            self.bin_edges = np.logspace(np.log10(min_distance), np.log10(self.max_distance), self.num_bins + 1)        
-            self.bin_centers = 10**((np.log10(self.bin_edges[:-1]) + np.log10(self.bin_edges[1:])) / 2)
-            self.bin_widths = np.diff(self.bin_edges)
-        else:        
-            counts,self.bin_edges = histogram_float([],bins=self.num_bins,range=(0,self.max_distance))
-            self.bin_centers = (self.bin_edges[:-1] + self.bin_edges[1:]) / 2
-            self.bin_widths = self.bin_edges[1:] - self.bin_edges[:-1]
-        self.PCF_counts = np.zeros((step_tot // check_steps,num_bins,2) )
+        counts,self.bin_edges = histogram_float([],bins=self.num_bins,range=(0,self.max_distance))
+        self.bin_centers = (self.bin_edges[:-1] + self.bin_edges[1:]) / 2
+        self.bin_widths = self.bin_edges[1:] - self.bin_edges[:-1]
+        #self.PCF_counts = np.zeros((step_tot // check_steps,num_bins,2) )
+        self.PCF_counts = np.zeros((len(log_check_points),num_bins,2) )
         self.shell_volumes = (4 / 3) * np.pi * ((self.bin_centers + self.bin_widths)**3 - self.bin_centers**3)
         self.gillespie = gillespie
         self.t_tot = 0.

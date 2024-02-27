@@ -1,5 +1,6 @@
 import numpy as np
 import copy
+import tables as pt
 def uniform_sphere_samples(num_samples):
         phi = np.linspace(0, 2 * np.pi, num_samples)
         cos_theta = np.linspace(-1, 1, num_samples)
@@ -28,15 +29,17 @@ def Compute_Average_ISF(current_positions, initial_positions, q_vectors):
     average_isf = np.mean(exp_terms, axis=(0, 1))
     return average_isf
 class ISF:
-        def __init__(self,step_tot,check_steps,coarse_grained_step,gillespie,q_norm,num_q_samples):
+        def __init__(self,step_tot,log_check_points,coarse_grained_steps,gillespie,q_norm,num_q_samples):
             self.q_vectors = q_norm * uniform_sphere_samples(num_q_samples)            
             self.gillespie = gillespie
-            self.isf_time = np.zeros((step_tot//check_steps,check_steps//coarse_grained_step),dtype=float)
+            #self.isf_time = np.zeros((step_tot//check_steps,check_steps//coarse_grained_step),dtype=float)
+            self.isf_time = [np.zeros(check_steps//coarse_grained_steps,dtype=float) for check_steps in log_check_points]
         def compute(self,time,move,i,t):
-            self.isf_time[i,t] = np.linalg.norm(Compute_Average_ISF(self.gillespie.get_r(periodic=True),self.initial_positions,self.q_vectors))
+            self.isf_time[i][t] = np.linalg.norm(Compute_Average_ISF(self.gillespie.get_r(periodic=True),self.initial_positions,self.q_vectors))
         def start_check_step(self):
             self.initial_positions = copy.copy(self.gillespie.get_r(periodic=True))
         def end_check_step(self):
             return
         def close(self,output):
-            output.put(('create_array', ('/'+'S'+hex(self.gillespie.seed),'ISF' , self.isf_time)))
+            #output.put(('create_vlarray', ('/'+'S'+hex(self.gillespie.seed),'ISF' , self.isf_time)))
+            output.put(('create_vlarray', ('/S'+hex(self.gillespie.seed), 'ISF', pt.Float64Atom(shape=()), self.isf_time)))

@@ -17,48 +17,56 @@ sys.path.append('/home/hugo/PostDoc/aging_condensates/Gillespie/Gillespie_backen
 
 import Gillespie_backend as gil
 
-def compute(gillespie,output,step_tot,check_steps,coarse_grained_step,cluster_arg,MSD_arg,ISF_arg,NRG_arg,PCF_arg,PCF_L_arg):
+def compute(gillespie, output, step_tot, initial_check_steps, coarse_grained_step, cluster_arg, MSD_arg, ISF_arg, NRG_arg, PCF_arg, PCF_L_arg, log_base=2):
     """
-    The simulation runs a total number of step_tot steps. Every measurement is first coarse grained to the number of coarse_grained steps.
-    For measurement that measure the aging of time evolution measurements like MSD and ISF, check_steps correspond to the window of 
-    computation
+    Implements logarithmic sampling for measurements in a Gillespie simulation.
+    initial_check_steps is the initial number of steps between checks, and log_base determines the base of the logarithmic scale for step increment.
     """
-    cluster = Cluster(step_tot,check_steps,coarse_grained_step,gillespie,*cluster_arg)
-    isf = ISF(step_tot,check_steps,coarse_grained_step,gillespie,*ISF_arg)
-    msd = MSD(step_tot,check_steps,coarse_grained_step,gillespie,*MSD_arg)
-    nrg = NRG(step_tot,check_steps,coarse_grained_step,gillespie,*NRG_arg)
-    pcf = PCF(step_tot,check_steps,coarse_grained_step,gillespie,*PCF_arg)
-    pcf_L = PCF_L(step_tot,check_steps,coarse_grained_step,gillespie,*PCF_L_arg)
-    time_track = Time(step_tot,check_steps,coarse_grained_step,gillespie)
+    # Calculate logarithmic check points
+    max_exponent = np.log(step_tot / initial_check_steps) / np.log(log_base)
+    log_check_points = [int(initial_check_steps * log_base ** i) for i in range(int(max_exponent) + 1)]
+    log_check_points.append(step_tot)
+    
+    cluster = Cluster(step_tot, log_check_points, coarse_grained_step, gillespie, *cluster_arg)
+    isf = ISF(step_tot, log_check_points, coarse_grained_step, gillespie, *ISF_arg)
+    msd = MSD(step_tot, log_check_points, coarse_grained_step, gillespie, *MSD_arg)
+    nrg = NRG(step_tot, log_check_points, coarse_grained_step, gillespie, *NRG_arg)
+    pcf = PCF(step_tot, log_check_points, coarse_grained_step, gillespie, *PCF_arg)
+    pcf_L = PCF_L(step_tot, log_check_points, coarse_grained_step, gillespie, *PCF_L_arg)
+    time_track = Time(step_tot, log_check_points, coarse_grained_step, gillespie)
 
-    for i in range(step_tot//check_steps):
+    current_step = 0
+    for i,check_point in enumerate(log_check_points):
+        #while current_step < check_point:
         isf.start_check_step()
         msd.start_check_step()
         pcf.start_check_step()
         pcf_L.start_check_step()
         time_track.start_check_step(i)
-        for t in range(check_steps//coarse_grained_step):
-            #time_track.start_coarse_step()
+        # Adjust the inner loop to match the current checkpoint interval
+        steps_to_next_checkpoint = check_point - current_step
+        for t in range(steps_to_next_checkpoint // coarse_grained_step):
             cluster.start_coarse_step()
             nrg.start_coarse_step()
             for steps in range(coarse_grained_step):
-                move,time = gillespie.evolve()
-                time_track.compute(time,move)
-                cluster.compute(time,move)
-                pcf.compute(time,move)
-                pcf_L.compute(time,move)
-                nrg.compute(time,move)
-            isf.compute(time,move,i,t)
-            msd.compute(time,move,i,t)
-
+                move, time = gillespie.evolve()
+                time_track.compute(time, move)
+                cluster.compute(time, move)
+                pcf.compute(time, move)
+                pcf_L.compute(time, move)
+                nrg.compute(time, move)
+            isf.compute(time, move, i, t)
+            msd.compute(time, move,i, t)
             time_track.end_coarse_step()
             nrg.end_coarse_step()
             cluster.end_coarse_step()
-            time_track.end_check_step(i,t)
+            time_track.end_check_step(i, t)
+        current_step += steps_to_next_checkpoint
         pcf.end_check_step(i)
         pcf_L.end_check_step(i)
         isf.end_check_step()
         msd.end_check_step()
+    
     pcf.close(output)
     pcf_L.close(output)
     cluster.close(output)
@@ -66,6 +74,56 @@ def compute(gillespie,output,step_tot,check_steps,coarse_grained_step,cluster_ar
     msd.close(output)
     nrg.close(output)
     time_track.close(output)
+
+#def compute(gillespie,output,step_tot,check_steps,coarse_grained_step,cluster_arg,MSD_arg,ISF_arg,NRG_arg,PCF_arg,PCF_L_arg):
+#    """
+#    The simulation runs a total number of step_tot steps. Every measurement is first coarse grained to the number of coarse_grained steps.
+#    For measurement that measure the aging of time evolution measurements like MSD and ISF, check_steps correspond to the window of 
+#    computation
+#    """
+#    cluster = Cluster(step_tot,check_steps,coarse_grained_step,gillespie,*cluster_arg)
+#    isf = ISF(step_tot,check_steps,coarse_grained_step,gillespie,*ISF_arg)
+#    msd = MSD(step_tot,check_steps,coarse_grained_step,gillespie,*MSD_arg)
+#    nrg = NRG(step_tot,check_steps,coarse_grained_step,gillespie,*NRG_arg)
+#    pcf = PCF(step_tot,check_steps,coarse_grained_step,gillespie,*PCF_arg)
+#    pcf_L = PCF_L(step_tot,check_steps,coarse_grained_step,gillespie,*PCF_L_arg)
+#    time_track = Time(step_tot,check_steps,coarse_grained_step,gillespie)
+#
+#    for i in range(step_tot//check_steps):
+#        isf.start_check_step()
+#        msd.start_check_step()
+#        pcf.start_check_step()
+#        pcf_L.start_check_step()
+#        time_track.start_check_step(i)
+#        for t in range(check_steps//coarse_grained_step):
+#            #time_track.start_coarse_step()
+#            cluster.start_coarse_step()
+#            nrg.start_coarse_step()
+#            for steps in range(coarse_grained_step):
+#                move,time = gillespie.evolve()
+#                time_track.compute(time,move)
+#                cluster.compute(time,move)
+#                pcf.compute(time,move)
+#                pcf_L.compute(time,move)
+#                nrg.compute(time,move)
+#            isf.compute(time,move,i,t)
+#            msd.compute(time,move,i,t)
+#
+#            time_track.end_coarse_step()
+#            nrg.end_coarse_step()
+#            cluster.end_coarse_step()
+#            time_track.end_check_step(i,t)
+#        pcf.end_check_step(i)
+#        pcf_L.end_check_step(i)
+#        isf.end_check_step()
+#        msd.end_check_step()
+#    pcf.close(output)
+#    pcf_L.close(output)
+#    cluster.close(output)
+#    isf.close(output)
+#    msd.close(output)
+#    nrg.close(output)
+#    time_track.close(output)
 
 
 def run_simulation(inqueue, output, step_tot, check_steps,coarse_grained_step,cluster_arg,MSD_arg,ISF_arg,NRG_arg,PCF_arg,PCF_L_arg):
@@ -78,19 +136,46 @@ def run_simulation(inqueue, output, step_tot, check_steps,coarse_grained_step,cl
         compute(gillespie, output, step_tot, check_steps,coarse_grained_step,cluster_arg,MSD_arg,ISF_arg,NRG_arg,PCF_arg,PCF_L_arg)
 
     
+#def handle_output(output, filename, header):
+#    """
+#    Handles writing simulation results to an HDF5 file.
+#    """
+#    with pt.open_file(filename, mode='w') as hdf:
+#        hdf.root._v_attrs.file_header = header
+#        
+#        while True:
+#            task = output.get()
+#            if task is None: break  # Signal to terminate
+#            
+#            method, args = task
+#            getattr(hdf, method)(*args)
 def handle_output(output, filename, header):
     """
-    Handles writing simulation results to an HDF5 file.
+    Handles writing simulation results to an HDF5 file, including support for
+    variable-length arrays via the 'create_vlarray' command.
     """
     with pt.open_file(filename, mode='w') as hdf:
         hdf.root._v_attrs.file_header = header
         
         while True:
             task = output.get()
-            if task is None: break  # Signal to terminate
+            if task is None:
+                break  # Signal to terminate
             
             method, args = task
-            getattr(hdf, method)(*args)
+            
+            # Handling different types of tasks
+            if method == 'create_vlarray':
+                # Create a variable-length array
+                group_path, array_name, atom, data = args
+                vlarray = hdf.create_vlarray(group_path, array_name, atom)
+                for item in data:
+                    vlarray.append(item)
+            else:# method == 'create_array':
+                # Create a fixed-size array
+                getattr(hdf, method)(*args)
+                #group_path, array_name, data = args
+                #hdf.create_array(group_path, array_name, obj=data) 
 
 def initialize_gillespie(ell_tot, Energy, kdiff, seed, Nlinker, dimension):
     """
