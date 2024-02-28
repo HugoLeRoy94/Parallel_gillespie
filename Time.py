@@ -6,7 +6,7 @@ class Time:
         self.gillespie = gillespie
         self.total_coarse_grained_time = np.zeros(step_tot//coarse_grained_steps,dtype=float)
         #self.time_check_steps = np.zeros((len(log_check_points),check_steps//coarse_grained_steps),dtype=float)
-        self.time_check_steps = [np.zeros(check_steps//coarse_grained_steps,dtype=float) for check_steps in log_check_points]
+        self.time_check_steps = [np.zeros((end-start)//coarse_grained_steps, dtype=float) for start, end in zip([0]+log_check_points[:-1], log_check_points)]
         self.time_shift = np.zeros(len(log_check_points),dtype=float)
         self.index = 0
         self.time_coarse = 0

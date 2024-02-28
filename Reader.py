@@ -49,8 +49,9 @@ class CustomHDF5Reader:
         measurements = []
         try:
             group_path = f'/{seed_hex}'
-            for node in self.file.iter_nodes(group_path, classname='Array'):
-                measurements.append(node._v_name)
+            for node in self.file.iter_nodes(group_path):
+                if isinstance(node, pt.Array) or isinstance(node, pt.VLArray):
+                    measurements.append(node._v_name)      
         except pt.NoSuchNodeError:
             print(f"No such group: {group_path}")
         return measurements

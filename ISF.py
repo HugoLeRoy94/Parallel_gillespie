@@ -33,9 +33,16 @@ class ISF:
             self.q_vectors = q_norm * uniform_sphere_samples(num_q_samples)            
             self.gillespie = gillespie
             #self.isf_time = np.zeros((step_tot//check_steps,check_steps//coarse_grained_step),dtype=float)
-            self.isf_time = [np.zeros(check_steps//coarse_grained_steps,dtype=float) for check_steps in log_check_points]
+            self.isf_time = [np.zeros((end-start)//coarse_grained_steps, dtype=float) for start, end in zip([0]+log_check_points[:-1], log_check_points)]
         def compute(self,time,move,i,t):
-            self.isf_time[i][t] = np.linalg.norm(Compute_Average_ISF(self.gillespie.get_r(periodic=True),self.initial_positions,self.q_vectors))
+            try:
+                self.isf_time[i][t] = np.linalg.norm(Compute_Average_ISF(self.gillespie.get_r(periodic=True),self.initial_positions,self.q_vectors))
+            except IndexError:
+                print(i)
+                print(t)
+                print(len(self.isf_time))
+                print(self.isf_time[i].shape)
+                raise
         def start_check_step(self):
             self.initial_positions = copy.copy(self.gillespie.get_r(periodic=True))
         def end_check_step(self):

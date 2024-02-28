@@ -3,10 +3,10 @@ import copy
 import tables as pt
 
 class MSD:
-    def __init__(self,step_tot,log_check_points,coarse_grained_step,gillespie):
+    def __init__(self,step_tot,log_check_points,coarse_grained_steps,gillespie):
         #self.msd_time = np.zeros((step_tot // check_steps, check_steps//coarse_grained_step), dtype=float)
-        self.msd_time = [np.zeros(check_steps//coarse_grained_step,dtype=float) for check_steps in log_check_points]
-        self.msd_tot = np.zeros((step_tot//coarse_grained_step), dtype=float)
+        self.msd_time = [np.zeros((end-start)//coarse_grained_steps, dtype=float) for start, end in zip([0]+log_check_points[:-1], log_check_points)]
+        self.msd_tot = np.zeros((step_tot//coarse_grained_steps), dtype=float)
         self.gillespie = gillespie
         self.index_tot = 0
         self.sim_initial_positions = copy.copy(gillespie.get_r(periodic=True))
