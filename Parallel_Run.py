@@ -24,8 +24,11 @@ def compute(gillespie, output, step_tot, initial_check_steps, coarse_grained_ste
     """
     # Calculate logarithmic check points
     max_exponent = np.log(step_tot / initial_check_steps) / np.log(log_base)
-    log_check_points = [int(initial_check_steps * log_base ** i) for i in range(int(max_exponent) + 1)]
-    log_check_points.append(step_tot)
+    #log_check_points = [int(initial_check_steps * log_base ** i) for i in range(int(max_exponent) + 1)]
+    #log_check_points.append(step_tot)
+    log_check_points = [int(round((initial_check_steps * log_base ** i) / coarse_grained_step) * coarse_grained_step) for i in range(int(max_exponent) + 1)]
+    if log_check_points[-1] != step_tot:
+        log_check_points[-1] = step_tot
     
     cluster = Cluster(step_tot, log_check_points, coarse_grained_step, gillespie, *cluster_arg)
     isf = ISF(step_tot, log_check_points, coarse_grained_step, gillespie, *ISF_arg)

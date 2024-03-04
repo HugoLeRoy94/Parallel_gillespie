@@ -1,9 +1,9 @@
 import numpy as np
 from Reader import *
 
-Fmin = lambda N,L,Eb : Eb*N - (L-N)*np.log(4*np.pi)# N is the number of linkers
+Fmin = lambda N,L,Eb : Eb*N - (L-N)*np.log(4*np.pi)#-N*np.log(7)# N is the number of linkers
 #Fmax = lambda N,L,Eb : Eb*N - MinEnt(N,L)
-Fmax = lambda N,L, E : -1.5*((N-1)*np.log(3*(N-1)/(2*np.pi*L)) -  1)-L*np.log(4*np.pi)+E*N
+Fmax = lambda N,L, E : -1.5*((N-1)*np.log(3*(N-1)/(2*np.pi*L)) -  1)-L*np.log(4*np.pi)+E*N #- 3/2*N*np.log(L/N)
 
 
 
@@ -35,12 +35,12 @@ class Data_Treatement:
             for i in range(3):
                 self.binned_time,self.average_data[:,i],self.variance[:,i] = average_scalar(self.time,self.data[:,:,i],num_bins,log_scale=log_scale)
             #self.binned_time,self.average_data,self.variance,self.distribution = average_scalar(self.time,self.data,num_bins)
-        elif self.data_type in {'NRG','MSD_tot'}:
+        elif self.data_type in {'NRG','MSD_tot','Coarse_Time'}:
                 self.binned_time,self.average_data,self.variance = average_scalar(self.time,self.data,num_bins,log_scale=log_scale)
-        elif self.data_type == 'PCF':
-            self.binned_time,self.average_data,self.variance = np.zeros((self.data.shape[1],num_bins),dtype=float),np.zeros((self.data.shape[1],num_bins),dtype=float),np.zeros((self.data.shape[1],num_bins),dtype=float)
-            for index in range(self.data.shape[1]):
-                self.binned_time[index],self.average_data[index],self.variance[index] = average_scalar(self.time[:,index],self.data[:,index],num_bins=num_bins,log_scale=log_scale)
+        elif self.data_type in {'PCF','PCF_L'}:
+            self.binned_time,self.average_data,self.variance = np.zeros((self.data.shape[1],self.data.shape[2]),dtype=float),np.zeros((self.data.shape[1],self.data.shape[2]),dtype=float),np.zeros((self.data.shape[1],self.data.shape[2]),dtype=float)
+            for index in range(self.data.shape[1]): # loop over the different timesteps
+                self.binned_time[index],self.average_data[index],self.variance[index] = average_scalar(self.data[:,index,:,0],self.data[:,index,:,1],num_bins=self.data.shape[2],log_scale=log_scale)
         elif self.data_type in {'MSD','ISF'}:
             self.binned_time,self.average_data,self.variance = np.zeros((len(self.data[0]),num_bins),dtype=float),np.zeros((len(self.data[0]),num_bins),dtype=float),np.zeros((len(self.data[0]),num_bins),dtype=float)
             for index in range(len(self.data[0])):
@@ -48,7 +48,7 @@ class Data_Treatement:
                 datas = np.array([self.data[i][index] for i in range(self.data.shape[0])])
                 self.binned_time[index],self.average_data[index],self.variance[index] = average_scalar(times,datas,num_bins=num_bins,log_scale=log_scale)
         else:
-            raise IndexError('Invalid time shape')
+            raise IndexError('data-type does not correspond to any known average')
     def rescale_energy(self):
             if self.data_type!='NRG':
                 raise ValueError('wrong data type')            

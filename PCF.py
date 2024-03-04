@@ -54,7 +54,7 @@ class PCF_L:
         self.dist = self.gillespie.get_ell_coordinates()[1:] - self.gillespie.get_ell_coordinates()[:-1]
         #dist_matrix = distance_matrix(self.gillespie.get_r(),self.gillespie.get_r())
         #self.dist = dist_matrix[np.triu_indices_from(dist_matrix, k=1)]
-        self.prev_hist, _ = histogram_float(self.dist, bins=self.bin_edges, range=(self.bin_edges[0], self.bin_edges[-1]))
+        self.prev_hist, _ = histogram_float(self.dist, bins=self.bin_edges, range=(self.bin_edges[0], self.bin_edges[-1]),density=False)
         #self.prev_hist, bin_edges = histogram_float(self.dist, bins=self.num_bins, range=(0, self.max_distance))
     def end_check_step(self,i):
         self.counts = self.counts / (self.time * self.shell_volumes*self.dist.shape[0])
