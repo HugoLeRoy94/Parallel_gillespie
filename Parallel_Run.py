@@ -129,14 +129,14 @@ def compute(gillespie, output, step_tot, initial_check_steps, coarse_grained_ste
 #    time_track.close(output)
 
 
-def run_simulation(inqueue, output, step_tot, check_steps,coarse_grained_step,cluster_arg,MSD_arg,ISF_arg,NRG_arg,PCF_arg,PCF_L_arg):
+def run_simulation(inqueue, output, step_tot, check_steps,coarse_grained_step,cluster_arg,MSD_arg,ISF_arg,NRG_arg,PCF_arg,PCF_L_arg,log_base):
     """
     Run the simulation for each set of parameters fetched from the input queue.
     """
     for args in iter(inqueue.get, None):
         gillespie = initialize_gillespie(*args)
         output.put(('create_group',('/','S'+hex(gillespie.seed))))
-        compute(gillespie, output, step_tot, check_steps,coarse_grained_step,cluster_arg,MSD_arg,ISF_arg,NRG_arg,PCF_arg,PCF_L_arg)
+        compute(gillespie, output, step_tot, check_steps,coarse_grained_step,cluster_arg,MSD_arg,ISF_arg,NRG_arg,PCF_arg,PCF_L_arg,log_base)
 
     
 #def handle_output(output, filename, header):
@@ -188,7 +188,7 @@ def initialize_gillespie(ell_tot, Energy, kdiff, seed, Nlinker, dimension):
     return gil.Gillespie(ell_tot=ell_tot, rho0=0., BindingEnergy=Energy, kdiff=kdiff,
                          seed=seed, sliding=False, Nlinker=Nlinker, old_gillespie=None, dimension=dimension)
 
-def parallel_evolution(args, step_tot, check_steps,coarse_grained_step,filename,cluster_arg,MSD_arg,ISF_arg,NRG_arg,PCF_arg,PCF_L_arg):
+def parallel_evolution(args, step_tot, check_steps,coarse_grained_step,filename,cluster_arg,MSD_arg,ISF_arg,NRG_arg,PCF_arg,PCF_L_arg,log_base):
     """
     Coordinate parallel execution of MSD evolution simulations.
     """
@@ -196,12 +196,12 @@ def parallel_evolution(args, step_tot, check_steps,coarse_grained_step,filename,
     output = mp.Queue()
     inqueue = mp.Queue()
     
-    header = make_header(args, [step_tot, check_steps,coarse_grained_step,cluster_arg,MSD_arg,ISF_arg,NRG_arg,PCF_arg,PCF_L_arg])
+    header = make_header(args, [step_tot, check_steps,coarse_grained_step,cluster_arg,MSD_arg,ISF_arg,NRG_arg,PCF_arg,PCF_L_arg,log_base])
     proc = mp.Process(target=handle_output, args=(output, filename, header))
     proc.start()
     
     jobs = [mp.Process(target=run_simulation, 
-                       args=(inqueue, output, step_tot, check_steps,coarse_grained_step,cluster_arg,MSD_arg,ISF_arg,NRG_arg,PCF_arg,PCF_L_arg)) 
+                       args=(inqueue, output, step_tot, check_steps,coarse_grained_step,cluster_arg,MSD_arg,ISF_arg,NRG_arg,PCF_arg,PCF_L_arg,log_base)) 
                        for _ in range(num_process)]
     
     for job in jobs:
@@ -239,7 +239,7 @@ def make_header(args, sim_arg):
         header += '\n'.join([f"{label} = {value}" for label, value in zip(labels_gillespie, first_set_args)])
 
     # Adding simulation-wide parameters from sim_arg
-    labels_sim = ['step_tot', 'check_steps', 'coarse_grained_step', 'cluster_max_distance', 'MSD_args', 'ISF_q_norm', 'ISF_q_num_sample', 'NRG_args', 'PCF_max_distance', 'PCF_num_bins','PCF_L_max_distance','PCF_L_num_bins']
+    labels_sim = ['step_tot', 'check_steps', 'coarse_grained_step', 'cluster_max_distance', 'MSD_args', 'ISF_q_norm', 'ISF_q_num_sample', 'NRG_args', 'PCF_max_distance', 'PCF_num_bins','PCF_L_max_distance','PCF_L_num_bins','log_base']
     
     # Ensure sim_arg is unpacked correctly according to how you structure it.
     # This example directly uses sim_arg assuming it is in the correct order matching labels_sim.
