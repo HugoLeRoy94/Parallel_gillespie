@@ -239,7 +239,7 @@ def make_header(args, sim_arg):
         header += '\n'.join([f"{label} = {value}" for label, value in zip(labels_gillespie, first_set_args)])
 
     # Adding simulation-wide parameters from sim_arg
-    labels_sim = ['step_tot', 'check_steps', 'coarse_grained_step', 'cluster_max_distance', 'MSD_args', 'ISF_q_norm', 'ISF_q_num_sample', 'NRG_args', 'PCF_max_distance', 'PCF_num_bins','PCF_L_max_distance','PCF_L_num_bins','log_base']
+    labels_sim = ['step_tot', 'check_steps', 'coarse_grained_step', 'cluster_max_distance', 'MSD_args', 'ISF_arg', 'NRG_args', 'PCF_arg','PCF_L_arg','log_base']
     
     # Ensure sim_arg is unpacked correctly according to how you structure it.
     # This example directly uses sim_arg assuming it is in the correct order matching labels_sim.
