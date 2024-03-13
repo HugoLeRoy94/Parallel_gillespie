@@ -29,7 +29,8 @@ def compute(gillespie, output, step_tot, initial_check_steps, coarse_grained_ste
     log_check_points = [int(round((initial_check_steps * log_base ** i) / coarse_grained_step) * coarse_grained_step) for i in range(int(max_exponent) + 1)]
     if log_check_points[-1] != step_tot:
         log_check_points[-1] = step_tot
-    log_check_points = list(set(log_check_points)).sort()
+    log_check_points = list(set(log_check_points))
+    log_check_points.sort()
     
     cluster = Cluster(step_tot, log_check_points, coarse_grained_step, gillespie, *cluster_arg)
     isf = ISF(step_tot, log_check_points, coarse_grained_step, gillespie, *ISF_arg)
