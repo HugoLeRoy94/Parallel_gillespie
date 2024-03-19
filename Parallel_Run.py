@@ -22,26 +22,29 @@ def compute(gillespie, output, step_tot, initial_check_steps, coarse_grained_ste
     Implements logarithmic sampling for measurements in a Gillespie simulation.
     initial_check_steps is the initial number of steps between checks, and log_base determines the base of the logarithmic scale for step increment.
     """
-    # Calculate logarithmic check points
-    max_exponent = np.log(step_tot / initial_check_steps) / np.log(log_base)
-    #log_check_points = [int(initial_check_steps * log_base ** i) for i in range(int(max_exponent) + 1)]
-    #log_check_points.append(step_tot)
-    log_check_points = [int(round((initial_check_steps * log_base ** i) / coarse_grained_step) * coarse_grained_step) for i in range(int(max_exponent) + 1)]
-    if log_check_points[-1] != step_tot:
-        log_check_points[-1] = step_tot
-    log_check_points = list(set(log_check_points))
-    log_check_points.sort()
+    if log_base:
+        # Calculate logarithmic check points
+        max_exponent = np.log(step_tot / initial_check_steps) / np.log(log_base)
+        #check_points = [int(initial_check_steps * log_base ** i) for i in range(int(max_exponent) + 1)]
+        #check_points.append(step_tot)
+        check_points = [int(round((initial_check_steps * log_base ** i) / coarse_grained_step) * coarse_grained_step) for i in range(int(max_exponent) + 1)]
+    else:
+        check_points = [int(round(initial_check_steps/initial_check_steps*i) * coarse_grained_step) for i in range(step_tot//initial_check_steps)]
+    if check_points[-1] != step_tot:
+        check_points[-1] = step_tot
+    check_points = list(set(check_points))
+    check_points.sort()
     
-    # cluster = Cluster(step_tot, log_check_points, coarse_grained_step, gillespie, *cluster_arg)
-    # isf = ISF(step_tot, log_check_points, coarse_grained_step, gillespie, *ISF_arg)
-    # msd = MSD(step_tot, log_check_points, coarse_grained_step, gillespie, *MSD_arg)
-    nrg = NRG(step_tot, log_check_points, coarse_grained_step, gillespie, *NRG_arg)
-    # pcf = PCF(step_tot, log_check_points, coarse_grained_step, gillespie, *PCF_arg)
-    # pcf_L = PCF_L(step_tot, log_check_points, coarse_grained_step, gillespie, *PCF_L_arg)
-    time_track = Time(step_tot, log_check_points, coarse_grained_step, gillespie)
+    # cluster = Cluster(step_tot, check_points, coarse_grained_step, gillespie, *cluster_arg)
+    # isf = ISF(step_tot, check_points, coarse_grained_step, gillespie, *ISF_arg)
+    # msd = MSD(step_tot, check_points, coarse_grained_step, gillespie, *MSD_arg)
+    nrg = NRG(step_tot, check_points, coarse_grained_step, gillespie, *NRG_arg)
+    # pcf = PCF(step_tot, check_points, coarse_grained_step, gillespie, *PCF_arg)
+    # pcf_L = PCF_L(step_tot, check_points, coarse_grained_step, gillespie, *PCF_L_arg)
+    time_track = Time(step_tot, check_points, coarse_grained_step, gillespie)
 
     current_step = 0
-    for i,check_point in enumerate(log_check_points):
+    for i,check_point in enumerate(check_points):
         #while current_step < check_point:
         #isf.start_check_step()
         #msd.start_check_step()
