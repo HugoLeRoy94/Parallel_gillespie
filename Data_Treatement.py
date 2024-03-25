@@ -5,6 +5,32 @@ Fmin = lambda N,L,Eb : Eb*N - (L-N)*np.log(4*np.pi)#-N*np.log(7)# N is the numbe
 #Fmax = lambda N,L,Eb : Eb*N - MinEnt(N,L)
 Fmax = lambda N,L, E : -1.5*((N-1)*np.log(3*(N-1)/(2*np.pi*L)) -  1)-L*np.log(4*np.pi)+E*N #- 3/2*N*np.log(L/N)
 
+def sliding_average(X, Y, window_size=5):
+    """
+    Apply a sliding average (moving average) to the curve defined by (X, Y).
+    
+    Parameters:
+    - X: numpy array of x-values.
+    - Y: numpy array of y-values, must be the same length as X.
+    - window_size: size of the sliding window (number of points to average).
+    
+    Returns:
+    - X_smooth: X values corresponding to the center of each sliding window.
+    - Y_smooth: Smoothed Y values.
+    """
+    half_window = window_size // 2
+    
+    # Initialize smoothed Y array
+    Y_smooth = np.convolve(Y, np.ones(window_size)/window_size, mode='valid')
+    
+    # Adjust X to match the size of the smoothed Y array
+    # This centers the window on the point being averaged
+    start_index = (window_size - 1) // 2
+    end_index = start_index + len(Y_smooth)
+    X_smooth = X[start_index:end_index]
+    
+    return X_smooth, Y_smooth
+
 #def interpolate_empty_bins(data):
 #    for i in range(len(data)):
 #        if data[i] == 0:  # Assuming 0 indicates an empty bin

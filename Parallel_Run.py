@@ -7,6 +7,7 @@ from PCF import PCF_L
 from Time import Time
 
 import numpy as np
+import time
 import multiprocessing as mp
 import tables as pt
 import ctypes
@@ -215,6 +216,8 @@ def parallel_evolution(args, step_tot, check_steps,coarse_grained_step,filename,
     for arg in args:
         inqueue.put(arg)
     
+    time.sleep(5)
+
     for _ in jobs:
         inqueue.put(None)
     
