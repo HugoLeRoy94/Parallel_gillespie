@@ -1,5 +1,6 @@
 *.hdf
 __pycache__/
+first_try/
 *.png
 *.svg
 Res/
