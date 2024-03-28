@@ -5,6 +5,23 @@ Fmin = lambda N,L,Eb : Eb*N - (L-N)*np.log(4*np.pi)#-N*np.log(7)# N is the numbe
 #Fmax = lambda N,L,Eb : Eb*N - MinEnt(N,L)
 Fmax = lambda N,L, E : -1.5*((N-1)*np.log(3*(N-1)/(2*np.pi*L)) -  1)-L*np.log(4*np.pi)+E*N #- 3/2*N*np.log(L/N)
 
+from astropy.visualization import LogStretch
+from astropy.visualization.mpl_normalize import ImageNormalize
+norm = ImageNormalize(vmin=0., vmax=100, stretch=LogStretch())
+import mpl_scatter_density # adds projection='scatter_density'
+from matplotlib.colors import LinearSegmentedColormap
+
+# "Viridis-like" colormap with white background
+white_viridis = LinearSegmentedColormap.from_list('white_viridis', [
+    (0, '#ffffff'),
+    (1e-20, '#440053'),
+    (0.2, '#404388'),
+    (0.4, '#2a788e'),
+    (0.6, '#21a784'),
+    (0.8, '#78d151'),
+    (1, '#fde624'),
+], N=256)
+
 def sliding_average(X, Y, window_size=5):
     """
     Apply a sliding average (moving average) to the curve defined by (X, Y).
@@ -53,7 +70,38 @@ def interpolate_empty_bins(data):
     # For np.interp, positions of the non-empty bins are the 'xp' and their values are 'fp'
     interpolated_data = np.interp(np.arange(len(data)), non_empty_indices, data[non_empty_indices])
     return interpolated_data
-
+def scatter_density(fig, x, y,nrows=1,ncols=1,pos=1,dpi=75,norm=None,colorbar=True,cmap=white_viridis,ax=None,xlim=None,ylim=None,resample=False,LogStretch = False,vmin =None,vmax=None):
+    if ax is None:
+        ax = fig.add_subplot(nrows, ncols, pos, projection='scatter_density')
+    if xlim is not None:
+        x_mask = (x >= xlim[0]) & (x <= xlim[1])
+        x = x[x_mask]
+        y = y[x_mask]
+        ax.set_xlim(xlim[0],xlim[1])
+    if ylim is not None:
+        y_mask = (y >= ylim[0]) & (y <= ylim[1])
+        y = y[y_mask]
+        x = x[y_mask]
+        ax.set_ylim(ylim[0],ylim[1])
+    if resample :
+        weights = 1 / x
+        # Step 2: Resample your data according to weights
+        # This is a simplified approach; for large datasets, consider a more efficient resampling method.
+        resampled_indices = np.random.choice(a=range(x.size), size=x.size, replace=True, p=weights/weights.sum())
+        x = x[resampled_indices]
+        y = y[resampled_indices]
+    
+    if norm is None or norm is False:
+        density = ax.scatter_density(x, y, cmap=cmap,dpi=dpi)
+    else:
+        if LogStretch:
+            norm = ImageNormalize(vmin=vmin, vmax=vmax, stretch=LogStretch())
+        else:
+            norm = ImageNormalize(vmin=vmin, vmax=vmax)
+        density = ax.scatter_density(x, y, cmap=cmap,dpi=dpi,norm=norm)
+    if colorbar:
+        fig.colorbar(density, label='Number of points per pixel')
+    return ax
 class Data_Treatement:
     def __init__(self,filename,data_type):
         self.data_type = data_type
@@ -100,6 +148,14 @@ class Data_Treatement:
                 self.average_data[index] = interpolate_empty_bins(self.average_data[index])
         else:
             raise IndexError('data-type does not correspond to any known average')
+    def curate_data(self,imin,imax,window_size=10):
+        if not hasattr(self,'binned_time') or not hasattr(self,'average_data') :
+            self.average()
+        X,Y = self.binned_time,self.average_data
+        X,Y = X[imin:imax],Y[imin:imax]
+        X,Y = sliding_average(X,Y,window_size=window_size)
+        Y = (Y - np.mean(Y[-len(Y)//10:]))/(np.mean(Y[:10])- np.mean(Y[-len(Y)//10:]))
+        return X,Y
     def rescale_energy(self):
             if self.data_type!='NRG':
                 raise ValueError('wrong data type')            
@@ -108,6 +164,7 @@ class Data_Treatement:
             E = self.attributes['Energy']
             for n in range(self.Nsample):
                 self.data[n] = ( self.data[n] - Fmin(N,L,E))/(Fmax(N,L,E)-Fmin(N,L,E))
+    
 #def average_scalar(X, Y, num_bins=100, log_scale=False, min_bin_size=1):
 #    if log_scale:
 #        # Ensure X contains only positive values for logarithmic scale

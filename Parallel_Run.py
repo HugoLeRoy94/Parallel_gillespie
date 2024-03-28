@@ -40,7 +40,7 @@ def compute(gillespie, output, step_tot, initial_check_steps, coarse_grained_ste
         check_points = [int(round((initial_check_steps * log_base ** i) / coarse_grained_step) * coarse_grained_step)
                         for i in range(int(max_exponent) + 1)]
     else:
-        check_points = [int(round(initial_check_steps / initial_check_steps * i) * coarse_grained_step)
+        check_points = [int(round(initial_check_steps / coarse_grained_step * i) * coarse_grained_step)
                         for i in range(step_tot // initial_check_steps)]
     if check_points[-1] != step_tot:
         check_points[-1] = step_tot
@@ -54,32 +54,38 @@ def compute(gillespie, output, step_tot, initial_check_steps, coarse_grained_ste
             Class, args = measurement_args[key]
             measurements[key] = Class(step_tot, check_points, coarse_grained_step, gillespie, *args)
     
+    time_track = Time(step_tot, check_points, coarse_grained_step, gillespie)
+    
     current_step = 0
     for i, check_point in enumerate(check_points):
         for measurement in measurements.values():
             if hasattr(measurement, 'start_check_step'):
                 measurement.start_check_step(i)
-        
+        time_track.start_check_step(i)        
         steps_to_next_checkpoint = check_point - current_step
         for t in range(steps_to_next_checkpoint // coarse_grained_step):
             for measurement in measurements.values():
                 if hasattr(measurement, 'start_coarse_step'):
-                    measurement.start_coarse_step(i,t)            
+                    measurement.start_coarse_step(i,t)
             
             for steps in range(coarse_grained_step):
                 move, time = gillespie.evolve()
                 for measurement in measurements.values():
                     measurement.compute(time, move, i, t)
-            
+                time_track.compute(time, move)            
             for measurement in measurements.values():
                 if hasattr(measurement, 'end_coarse_step'):
                     measurement.end_coarse_step(i,t)
+            time_track.end_coarse_step()
+            time_track.end_check_step(i, t)
+        current_step += steps_to_next_checkpoint
         for measurement in measurements.values():
             if hasattr(measurement, 'end_check_step'):
                 measurement.end_check_step(i)
     
     for measurement in measurements.values():
         measurement.close(output)
+    time_track.close(output)
 
 #def compute(gillespie, output, step_tot, initial_check_steps, coarse_grained_step, cluster_arg, MSD_arg, ISF_arg, NRG_arg, PCF_arg, PCF_L_arg, log_base=2):
 #    """
@@ -116,7 +122,7 @@ def compute(gillespie, output, step_tot, initial_check_steps, coarse_grained_ste
 #        pcf_L.start_check_step()
 #        time_track.start_check_step(i)
 #        # Adjust the inner loop to match the current checkpoint interval
-#        steps_to_next_checkpoint = check_point - current_step
+#        steps_to_next_checkpoint = check_point - current_stepcurrent_step += steps_to_next_checkpoint
 #        for t in range(steps_to_next_checkpoint // coarse_grained_step):
 #            cluster.start_coarse_step()
 #            nrg.start_coarse_step()
