@@ -66,7 +66,7 @@ def compute_avg_nearest_neighbor_distance(points):
 
 
 class Cluster:
-    def __init__(self,step_tot,check_steps,coarse_grained_step,gillespie,max_distance):
+    def __init__(self,step_tot,check_steps,coarse_grained_step,gillespie,max_distance,*args):
         self.metrics_time = np.zeros((step_tot //coarse_grained_step, 3), dtype=float)  # Adjusted for an extra column
         clusters = cluster_points(gillespie.get_r(), max_distance)
         self.prev_c_size = np.mean([len(c) for c in clusters])
@@ -75,7 +75,7 @@ class Cluster:
         self.gillespie = gillespie
         self.max_distance = max_distance
         self.index = 0
-    def compute(self,time,move):
+    def compute(self,time,move,*args):
         dt = np.sum(time)
         self.t_tot+=dt
         clusters = cluster_points(self.gillespie.get_R(), self.max_distance)
@@ -88,16 +88,16 @@ class Cluster:
         self.prev_c_size = c_size
         self.prev_mean_distance = mean_distance
         self.prev_avg_nn_distance = avg_nn_distance
-    def start_coarse_step(self):
+    def start_coarse_step(self,*args):
         self.av_c_size = 0.
         self.total_mean_distance = 0.
         self.total_avg_nn_distance = 0.  # Reset new metric accumulator
         self.t_tot= 0.
-    def end_coarse_step(self):
+    def end_coarse_step(self,*args):
         self.av_c_size /= self.t_tot
         mean_distance_avg = self.total_mean_distance / self.t_tot if self.t_tot != 0 else np.nan
         avg_nn_distance_avg = self.total_avg_nn_distance / self.t_tot if self.t_tot != 0 else np.nan  # Compute average for new metric
         self.metrics_time[self.index] = [self.av_c_size, mean_distance_avg, avg_nn_distance_avg]  # Store new metric        
         self.index+=1
-    def close(self,output):
+    def close(self,output,*args):
         output.put(('create_array', ('/'+'S'+hex(self.gillespie.seed),'cluster' , self.metrics_time)))

@@ -4,3 +4,4 @@ first_try/
 *.png
 *.svg
 Res/
+*.npy
