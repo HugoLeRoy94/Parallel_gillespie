@@ -110,6 +110,7 @@ class Data_Treatement:
         self.attributes = self.Read.get_header_attributes()
         #print(self.Read.list_measurements(self.Read.list_groups()[0]))
         if data_type not in self.Read.list_measurements(self.Read.list_groups()[0]):
+            
             raise ValueError('data_type unknown')
         self.data = np.array([self.Read.get_measurement_data(grp,data_type) for grp in self.Read.list_groups()],dtype=object)
         if len(self.data[0]) == len(self.Read.get_measurement_data(self.Read.list_groups()[0],"Check_Time")):
@@ -131,7 +132,7 @@ class Data_Treatement:
                 self.binned_time,self.average_data[:,i],self.variance[:,i] = average_scalar(self.time,self.data[:,:,i],num_bins,log_scale=log_scale)
                 self.average_data[:,i] = interpolate_empty_bins(self.average_data[:,i])
             #self.binned_time,self.average_data,self.variance,self.distribution = average_scalar(self.time,self.data,num_bins)
-        elif self.data_type in {'NRG','MSD_tot','Coarse_Time'}:
+        elif self.data_type in {'NRG','MSD_tot','Coarse_Time','Entropy'}:
                 self.binned_time,self.average_data,self.variance = average_scalar(self.time,self.data,num_bins,log_scale=log_scale)
                 self.average_data = interpolate_empty_bins(self.average_data)
         elif self.data_type in {'PCF','PCF_L'}:
@@ -153,7 +154,8 @@ class Data_Treatement:
             self.average()
         X,Y = self.binned_time,self.average_data
         X,Y = X[imin:imax],Y[imin:imax]
-        X,Y = sliding_average(X,Y,window_size=window_size)
+        if window_size:
+            X,Y = sliding_average(X,Y,window_size=window_size)
         Y = (Y - np.mean(Y[-len(Y)//10:]))/(np.mean(Y[:10])- np.mean(Y[-len(Y)//10:]))
         return X,Y
     def rescale_energy(self):
@@ -196,6 +198,43 @@ class Data_Treatement:
 #                variance_scalar[i] = 0  # Set variance to 0 if only one value in the bin
 #
 #    return bin_centers, average_scalar, variance_scalar
+#def average_scalar(X, Y, num_bins=100, log_scale=False, min_bin_size=1):
+#    # Ensure X is at least 2D
+#    X = np.atleast_2d(X)
+#    Y = np.atleast_2d(Y)
+#    
+#    # Adjust X for logarithmic scale if requested
+#    if log_scale:
+#        X = np.maximum(X, min_bin_size)
+#        bins = np.logspace(np.log10(X.min()), np.log10(X.max()), num_bins + 1)
+#    else:
+#        bins = np.linspace(X.min(), X.max(), num_bins + 1)
+#    
+#    bin_centers = (bins[:-1] + bins[1:]) / 2
+#    if log_scale:
+#        bin_centers = np.sqrt(bins[:-1] * bins[1:])
+#    
+#    # Pre-calculate bin indices for all X values
+#    bin_indices = np.digitize(X.ravel(), bins) - 1
+#    bin_indices = np.clip(bin_indices, 0, num_bins-1)
+#
+#    # Initialize arrays for average and variance
+#    average_scalar = np.zeros(num_bins)
+#    variance_scalar = np.zeros(num_bins) + np.nan
+#
+#    for i in range(num_bins):
+#        # Boolean array indicating whether each element falls into the current bin
+#        in_bin = bin_indices == i
+#        if np.any(in_bin):
+#            # Compute average directly
+#            average_scalar[i] = np.mean(Y.ravel()[in_bin])
+#            # Compute variance, using ddof=1 for sample standard deviation
+#            if np.sum(in_bin) > 1:
+#                variance_scalar[i] = np.var(Y.ravel()[in_bin], ddof=1)
+#            else:
+#                variance_scalar[i] = 0
+#
+#    return bin_centers, average_scalar, variance_scalar
 def average_scalar(X, Y, num_bins=100, log_scale=False, min_bin_size=1):
     # Ensure X is at least 2D
     X = np.atleast_2d(X)
@@ -212,24 +251,29 @@ def average_scalar(X, Y, num_bins=100, log_scale=False, min_bin_size=1):
     if log_scale:
         bin_centers = np.sqrt(bins[:-1] * bins[1:])
     
-    # Pre-calculate bin indices for all X values
-    bin_indices = np.digitize(X.ravel(), bins) - 1
-    bin_indices = np.clip(bin_indices, 0, num_bins-1)
-
-    # Initialize arrays for average and variance
-    average_scalar = np.zeros(num_bins)
-    variance_scalar = np.zeros(num_bins) + np.nan
-
-    for i in range(num_bins):
-        # Boolean array indicating whether each element falls into the current bin
-        in_bin = bin_indices == i
-        if np.any(in_bin):
-            # Compute average directly
-            average_scalar[i] = np.mean(Y.ravel()[in_bin])
-            # Compute variance, using ddof=1 for sample standard deviation
-            if np.sum(in_bin) > 1:
-                variance_scalar[i] = np.var(Y.ravel()[in_bin], ddof=1)
-            else:
-                variance_scalar[i] = 0
-
-    return bin_centers, average_scalar, variance_scalar
+    # Initialize arrays for the weighted average and variance
+    weighted_average = np.zeros(num_bins)
+    count = np.zeros(num_bins)
+    # Loop over each curve
+    for curve_x, curve_y in zip(X, Y):
+        # Calculate dx for this curve
+        dx = np.diff(np.append(0,curve_x), prepend=0)[1:]
+        
+        # Pre-calculate bin indices for all x values of this curve
+        bin_indices = np.digitize(curve_x, bins) - 1
+        bin_indices = np.clip(bin_indices, 0, num_bins-1)
+        
+        # Add the weighted average to the respective bin
+        for i in range(num_bins):
+            in_bin = bin_indices == i
+            if np.any(in_bin):
+                # Update the weighted average and weight sums
+                weighted_average[i] += np.sum(curve_y[in_bin]*dx[in_bin])/np.sum(dx[in_bin])
+                count[i]+=1
+    weighted_average /=count
+                
+    
+    # Variance calculation would need adjustment for this approach
+    # It's complex since we're working with weighted averages per curve, not individual samples
+    
+    return bin_centers, weighted_average,0
