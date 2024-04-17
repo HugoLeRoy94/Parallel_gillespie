@@ -109,10 +109,9 @@ class Data_Treatement:
         self.Read.open()
         self.attributes = self.Read.get_header_attributes()
         #print(self.Read.list_measurements(self.Read.list_groups()[0]))
-        if data_type not in self.Read.list_measurements(self.Read.list_groups()[0]):
-            
+        if data_type not in self.Read.list_measurements(self.Read.list_groups()[0]):            
             raise ValueError('data_type unknown')
-        self.data = np.array([self.Read.get_measurement_data(grp,data_type) for grp in self.Read.list_groups()],dtype=object)
+        self.data = np.array([self.Read.get_measurement_data(grp,data_type) for grp in self.Read.list_groups() if self.Read.get_measurement_data(grp,data_type) is not None],dtype=object)
         if len(self.data[0]) == len(self.Read.get_measurement_data(self.Read.list_groups()[0],"Check_Time")):
             TimeType = "Check_Time"
         elif len(self.data[0]) == len(self.Read.get_measurement_data(self.Read.list_groups()[0],"Coarse_Time")):
@@ -122,10 +121,13 @@ class Data_Treatement:
             print(self.Read.get_measurement_data(self.Read.list_groups()[0],"Coarse_Time").shape)
             print(self.Read.get_measurement_data(self.Read.list_groups()[0],"Check_Time").shape)
             raise ValueError('No time with correct shape found')
-        self.time = np.array([self.Read.get_measurement_data(grp,TimeType) for grp in self.Read.list_groups()],dtype=object)
+        self.time = np.array([self.Read.get_measurement_data(grp,TimeType) for grp in self.Read.list_groups() if self.Read.get_measurement_data(grp,TimeType) is not None],dtype=object)
         self.Nsample = len(self.Read.list_groups())
         self.Read.close()
     def average(self,num_bins=100,log_scale=False):
+        if np.any(self.data==None):
+            print('Nones founds in the array, certainly due to defective seeds, we remove it before averaging')
+            self.data = self.data[self.data!=None]
         if self.data_type == 'cluster':
             self.variance,self.average_data = np.zeros((num_bins,3)),np.zeros((num_bins,3))
             for i in range(3):

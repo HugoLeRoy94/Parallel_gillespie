@@ -2,7 +2,49 @@ import numpy as np
 from scipy.spatial import distance_matrix
 from scipy.spatial import distance
 
+#### Written by chat gpt : need to be tested
+from sklearn.cluster import AgglomerativeClustering
+from sklearn.metrics import pairwise_distances
+
+def hierarchical_clustering_with_stats(points, max_distance):
+    # Check if input is in the format (3, N), if so transpose it
+    if points.shape[0] == 3:
+        points = points.T
+
+    # Setting up the Agglomerative Clustering with single linkage and a distance threshold
+    clustering = AgglomerativeClustering(n_clusters=None, distance_threshold=max_distance, linkage='single')
+    clustering.fit(points)
+
+    # Extract the labels and calculate the number of points in each cluster
+    labels = clustering.labels_
+    unique_labels = np.unique(labels)
+    cluster_sizes = [np.sum(labels == label) for label in unique_labels]
+    average_cluster_size = np.mean(cluster_sizes)
+
+    # Calculate the centroids of each cluster
+    centroids = np.array([points[labels == label].mean(axis=0) for label in unique_labels])
+    
+    # Calculate pairwise distances between centroids if more than one cluster exists
+    if len(centroids) > 1:
+        distances = pairwise_distances(centroids)
+        # We use np.triu_indices to consider only the upper triangle of the distance matrix, excluding the diagonal
+        upper_triangle_indices = np.triu_indices_from(distances, k=1)
+        average_distance_between_clusters = np.mean(distances[upper_triangle_indices])
+    else:
+        average_distance_between_clusters = 0  # Only one cluster, no distances to compute
+
+    return average_cluster_size, average_distance_between_clusters
+
+# Example usage:
+# X = np.array([[1, 2], [1.5, 1.8], [5, 8], [8, 8], [1, 0.6], [9, 11]])
+# avg_size, avg_dist = hierarchical_clustering_with_stats(X, 2)
+# print("Average Cluster Size:", avg_size)
+# print("Average Distance Between Clusters:", avg_dist)
+
+
 def cluster_points(points, max_distance):
+    raise NotImplemented('the function inputs depends on the order of points')
+
     # Reshape the points array to shape (-1, 3) if it's (3, N)
     if points.shape[0] == 3:
         points = points.T
@@ -68,9 +110,10 @@ def compute_avg_nearest_neighbor_distance(points):
 class Cluster:
     def __init__(self,step_tot,check_steps,coarse_grained_step,gillespie,max_distance,*args):
         self.metrics_time = np.zeros((step_tot //coarse_grained_step, 3), dtype=float)  # Adjusted for an extra column
-        clusters = cluster_points(gillespie.get_r(), max_distance)
-        self.prev_c_size = np.mean([len(c) for c in clusters])
-        self.prev_mean_distance = compute_mean_distance_between_clusters(clusters)
+        #clusters = cluster_points(gillespie.get_r(), max_distance)
+        #self.prev_c_size = np.mean([len(c) for c in clusters])
+        #self.prev_mean_distance = compute_mean_distance_between_clusters(clusters)
+        self.prev_c_size,self.prev_mean_distance =hierarchical_clustering_with_stats(gillespie.get_r(),max_distance)
         self.prev_avg_nn_distance = compute_avg_nearest_neighbor_distance(gillespie.get_r())  # New metric
         self.gillespie = gillespie
         self.max_distance = max_distance
@@ -78,9 +121,10 @@ class Cluster:
     def compute(self,time,move,*args):
         dt = np.sum(time)
         self.t_tot+=dt
-        clusters = cluster_points(self.gillespie.get_R(), self.max_distance)
-        c_size = np.mean([len(c) for c in clusters])
-        mean_distance = compute_mean_distance_between_clusters(clusters)
+        #clusters = cluster_points(self.gillespie.get_R(), self.max_distance)
+        #c_size = np.mean([len(c) for c in clusters])
+        #mean_distance = compute_mean_distance_between_clusters(clusters)
+        c_size,mean_distance = hierarchical_clustering_with_stats(self.gillespie.get_r(),self.max_distance)
         avg_nn_distance = compute_avg_nearest_neighbor_distance(self.gillespie.get_r())
         self.av_c_size += self.prev_c_size * dt
         self.total_mean_distance += self.prev_mean_distance * dt if not np.isnan(self.prev_mean_distance) else 0

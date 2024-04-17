@@ -41,7 +41,7 @@ class CustomHDF5Reader:
         List all measurements available for a given seed.
 
         Parameters:
-            seed_hex (str): Hexadecimal string representing the seed.
+            seed_hex (str): Hexadecimal string representing the seed.   
 
         Returns:
             list: A list of available measurement types for the given seed.
