@@ -35,16 +35,7 @@ def hierarchical_clustering_with_stats(points, max_distance):
 
     return average_cluster_size, average_distance_between_clusters
 
-# Example usage:
-# X = np.array([[1, 2], [1.5, 1.8], [5, 8], [8, 8], [1, 0.6], [9, 11]])
-# avg_size, avg_dist = hierarchical_clustering_with_stats(X, 2)
-# print("Average Cluster Size:", avg_size)
-# print("Average Distance Between Clusters:", avg_dist)
-
-
 def cluster_points(points, max_distance):
-    raise NotImplemented('the function inputs depends on the order of points')
-
     # Reshape the points array to shape (-1, 3) if it's (3, N)
     if points.shape[0] == 3:
         points = points.T
@@ -52,27 +43,78 @@ def cluster_points(points, max_distance):
     N = points.shape[0]
     clusters = []
     for i in range(N):
-        # Initialize a new cluster with the current point
-        new_cluster = [points[i]]
-
+        # Initialize a variable to track if the point was added to any cluster
+        added_to_cluster = False
         for cluster in clusters:
             for point in cluster:
                 # If the current point is within the max_distance of a point in an existing cluster
-                if np.linalg.norm(points[i]- point) <= max_distance:
-                    # Add the current point to the cluster and break out of the loop
+                if np.linalg.norm(points[i] - point) <= max_distance:
+                    # Add the current point to the cluster
                     cluster.append(points[i])
-                    break
-            else:
-                # Continue the loop if the inner loop wasn't broken
+                    added_to_cluster = True
+                    break  # Only break from the innermost loop
+            if added_to_cluster:
+                # No need to continue the inner loop if already added to this cluster
                 continue
 
-            # Break the outer loop if the inner loop was broken
-            break
-        else:
-            # If the point wasn't added to any cluster, we add the new_cluster to the list of clusters
-            clusters.append(new_cluster)
+        # If the point wasn't added to any cluster, create a new cluster with this point
+        if not added_to_cluster:
+            clusters.append([points[i]])
 
-    return [np.array(cluster) for cluster in clusters]
+    # Optional: Post-processing to merge overlapping clusters
+    merged_clusters = []
+    while clusters:
+        first, rest = clusters[0], clusters[1:]
+        first = set(tuple(x) for x in first)  # Convert lists to sets of tuples for immutability
+        merged = True
+        while merged:
+            merged = False
+            for r in rest:
+                r_set = set(tuple(x) for x in r)
+                if not first.isdisjoint(r_set):  # Check if clusters overlap
+                    first |= r_set  # Union the sets
+                    rest.remove(r)
+                    merged = True
+                    break
+        merged_clusters.append(list(first))
+        clusters = rest
+
+    # Convert each cluster back to numpy arrays
+    return [np.array(list(map(list, cluster))) for cluster in merged_clusters]
+
+
+
+#def cluster_points(points, max_distance):
+#    raise NotImplemented('the function inputs depends on the order of points')
+#
+#    # Reshape the points array to shape (-1, 3) if it's (3, N)
+#    if points.shape[0] == 3:
+#        points = points.T
+#
+#    N = points.shape[0]
+#    clusters = []
+#    for i in range(N):
+#        # Initialize a new cluster with the current point
+#        new_cluster = [points[i]]
+#
+#        for cluster in clusters:
+#            for point in cluster:
+#                # If the current point is within the max_distance of a point in an existing cluster
+#                if np.linalg.norm(points[i]- point) <= max_distance:
+#                    # Add the current point to the cluster and break out of the loop
+#                    cluster.append(points[i])
+#                    break
+#            else:
+#                # Continue the loop if the inner loop wasn't broken
+#                continue
+#
+#            # Break the outer loop if the inner loop was broken
+#            break
+#        else:
+#            # If the point wasn't added to any cluster, we add the new_cluster to the list of clusters
+#            clusters.append(new_cluster)
+#
+#    return [np.array(cluster) for cluster in clusters]
 
 def compute_mean_distance_between_clusters(clusters):
     """Compute the mean distance between cluster centroids."""
@@ -110,10 +152,10 @@ def compute_avg_nearest_neighbor_distance(points):
 class Cluster:
     def __init__(self,step_tot,check_steps,coarse_grained_step,gillespie,max_distance,*args):
         self.metrics_time = np.zeros((step_tot //coarse_grained_step, 3), dtype=float)  # Adjusted for an extra column
-        #clusters = cluster_points(gillespie.get_r(), max_distance)
-        #self.prev_c_size = np.mean([len(c) for c in clusters])
-        #self.prev_mean_distance = compute_mean_distance_between_clusters(clusters)
-        self.prev_c_size,self.prev_mean_distance =hierarchical_clustering_with_stats(gillespie.get_r(),max_distance)
+        clusters = cluster_points(gillespie.get_r(), max_distance)
+        self.prev_c_size = np.mean([len(c) for c in clusters])
+        self.prev_mean_distance = compute_mean_distance_between_clusters(clusters)
+        #self.prev_c_size,self.prev_mean_distance =hierarchical_clustering_with_stats(gillespie.get_r(),max_distance)
         self.prev_avg_nn_distance = compute_avg_nearest_neighbor_distance(gillespie.get_r())  # New metric
         self.gillespie = gillespie
         self.max_distance = max_distance
@@ -121,10 +163,10 @@ class Cluster:
     def compute(self,time,move,*args):
         dt = np.sum(time)
         self.t_tot+=dt
-        #clusters = cluster_points(self.gillespie.get_R(), self.max_distance)
-        #c_size = np.mean([len(c) for c in clusters])
-        #mean_distance = compute_mean_distance_between_clusters(clusters)
-        c_size,mean_distance = hierarchical_clustering_with_stats(self.gillespie.get_r(),self.max_distance)
+        clusters = cluster_points(self.gillespie.get_R(), self.max_distance)
+        c_size = np.mean([len(c) for c in clusters])
+        mean_distance = compute_mean_distance_between_clusters(clusters)
+        #c_size,mean_distance = hierarchical_clustering_with_stats(self.gillespie.get_r(),self.max_distance)
         avg_nn_distance = compute_avg_nearest_neighbor_distance(self.gillespie.get_r())
         self.av_c_size += self.prev_c_size * dt
         self.total_mean_distance += self.prev_mean_distance * dt if not np.isnan(self.prev_mean_distance) else 0
