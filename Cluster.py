@@ -1,6 +1,23 @@
 import numpy as np
 from scipy.spatial import distance_matrix
 from scipy.spatial import distance
+import os
+import ctypes
+import pathlib
+# Load the shared library
+lib_path = os.path.abspath(str(pathlib.Path(__file__).parent.absolute())+"/clustering.so")
+my_clustering_lib = ctypes.CDLL(lib_path)
+
+# Define the ClusterStats structure
+class ClusterStats(ctypes.Structure):
+    _fields_ = [
+        ("average_cluster_size", ctypes.c_float),
+        ("average_distance_between_clusters", ctypes.c_float),
+    ]
+
+# Set the argument and return types for the C++ function
+my_clustering_lib.hierarchical_clustering_with_stats.restype = ClusterStats
+my_clustering_lib.hierarchical_clustering_with_stats.argtypes = [ctypes.POINTER(ctypes.c_float), ctypes.c_size_t, ctypes.c_float]
 
 #### Written by chat gpt : need to be tested
 from sklearn.cluster import AgglomerativeClustering
@@ -83,7 +100,13 @@ def cluster_points(points, max_distance):
     # Convert each cluster back to numpy arrays
     return [np.array([list(point) for point in cluster]) for cluster in merged_clusters]#[np.array(list(map(list, cluster))) for cluster in merged_clusters]
 
+def c_size_distance(points,max_distance):
+    # Flatten the points array to pass to C++
+    flattened_points = points.flatten().astype(ctypes.c_float)
 
+    # Call the C++ function
+    stats = my_clustering_lib.hierarchical_clustering_with_stats(flattened_points.ctypes.data_as(ctypes.POINTER(ctypes.c_float)), points.shape[0], max_distance)
+    return stats.average_cluster_size, stats.average_distance_between_clusters
 
 #def cluster_points(points, max_distance):
 #    raise NotImplemented('the function inputs depends on the order of points')
@@ -153,10 +176,11 @@ def compute_avg_nearest_neighbor_distance(points):
 class Cluster:
     def __init__(self,step_tot,check_steps,coarse_grained_step,gillespie,max_distance,*args):
         self.metrics_time = np.zeros((step_tot //coarse_grained_step, 3), dtype=float)  # Adjusted for an extra column
-        clusters = cluster_points(gillespie.get_r(), max_distance)
-        self.prev_c_size = np.mean([len(c) for c in clusters])
-        self.prev_mean_distance = compute_mean_distance_between_clusters(clusters)
+        #clusters = cluster_points(gillespie.get_r(), max_distance)
+        #self.prev_c_size = np.mean([len(c) for c in clusters])
+        #self.prev_mean_distance = compute_mean_distance_between_clusters(clusters)
         #self.prev_c_size,self.prev_mean_distance =hierarchical_clustering_with_stats(gillespie.get_r(),max_distance)
+        self.prev_c_size,self.prev_mean_distance =  c_size_distance(gillespie.get_r(),max_distance)
         self.prev_avg_nn_distance = compute_avg_nearest_neighbor_distance(gillespie.get_r())  # New metric
         self.gillespie = gillespie
         self.max_distance = max_distance
@@ -164,10 +188,11 @@ class Cluster:
     def compute(self,time,move,*args):
         dt = np.sum(time)
         self.t_tot+=dt
-        clusters = cluster_points(self.gillespie.get_R(), self.max_distance)
-        c_size = np.mean([len(c) for c in clusters])
-        mean_distance = compute_mean_distance_between_clusters(clusters)
+        #clusters = cluster_points(self.gillespie.get_R(), self.max_distance)
+        #c_size = np.mean([len(c) for c in clusters])
+        #mean_distance = compute_mean_distance_between_clusters(clusters)
         #c_size,mean_distance = hierarchical_clustering_with_stats(self.gillespie.get_r(),self.max_distance)
+        c_size,mean_distance = c_size_distance(self.gillespie.get_r(),self.max_distance)
         avg_nn_distance = compute_avg_nearest_neighbor_distance(self.gillespie.get_r())
         self.av_c_size += self.prev_c_size * dt
         self.total_mean_distance += self.prev_mean_distance * dt if not np.isnan(self.prev_mean_distance) else 0
