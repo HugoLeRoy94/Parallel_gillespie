@@ -63,24 +63,25 @@ def cluster_points(points, max_distance):
 
     # Optional: Post-processing to merge overlapping clusters
     merged_clusters = []
-    while clusters:
-        first, rest = clusters[0], clusters[1:]
-        first = set(tuple(x) for x in first)  # Convert lists to sets of tuples for immutability
+    clusters_as_sets = [set(tuple(point) for point in cluster) for cluster in clusters] 
+    while clusters_as_sets:        
+        first, rest = clusters_as_sets[0], clusters_as_sets[1:]#clusters[0], clusters[1:]
+        #first = set(tuple(x) for x in first)  # Convert lists to sets of tuples for immutability
         merged = True
         while merged:
             merged = False
             for r in rest:
-                r_set = set(tuple(x) for x in r)
-                if not first.isdisjoint(r_set):  # Check if clusters overlap
-                    first |= r_set  # Union the sets
+                #r_set = set(tuple(x) for x in r)
+                if not first.isdisjoint(r):  # Check if clusters overlap
+                    first |= r  # Union the sets
                     rest.remove(r)
                     merged = True
                     break
         merged_clusters.append(list(first))
-        clusters = rest
+        clusters_as_sets = rest
 
     # Convert each cluster back to numpy arrays
-    return [np.array(list(map(list, cluster))) for cluster in merged_clusters]
+    return [np.array([list(point) for point in cluster]) for cluster in merged_clusters]#[np.array(list(map(list, cluster))) for cluster in merged_clusters]
 
 
 

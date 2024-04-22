@@ -121,7 +121,11 @@ class Data_Treatement:
             print(self.Read.get_measurement_data(self.Read.list_groups()[0],"Coarse_Time").shape)
             print(self.Read.get_measurement_data(self.Read.list_groups()[0],"Check_Time").shape)
             raise ValueError('No time with correct shape found')
-        self.time = np.array([self.Read.get_measurement_data(grp,TimeType) for grp in self.Read.list_groups() if self.Read.get_measurement_data(grp,TimeType) is not None],dtype=object)
+        if data_type !='ISF':
+            self.time = np.array([self.Read.get_measurement_data(grp,TimeType) for grp in self.Read.list_groups() if self.Read.get_measurement_data(grp,TimeType) is not None],dtype=object)
+        else:
+            coarse_time = np.array([self.Read.get_measurement_data(grp,"Coarse_Time") for grp in self.Read.list_groups() if self.Read.get_measurement_data(grp,"Coarse_Time") is not None],dtype=object)
+            self.time = [[t_sys[-isf.__len__():] - t_sys[-isf.__len__()] for isf in system]for  t_sys,system in zip(coarse_time,self.data)]
         self.Nsample = len(self.Read.list_groups())
         self.Read.close()
     def average(self,num_bins=100,log_scale=False):
@@ -145,7 +149,7 @@ class Data_Treatement:
         elif self.data_type in {'MSD','ISF'}:
             self.binned_time,self.average_data,self.variance = np.zeros((len(self.data[0]),num_bins),dtype=float),np.zeros((len(self.data[0]),num_bins),dtype=float),np.zeros((len(self.data[0]),num_bins),dtype=float)
             for index in range(len(self.data[0])):
-                times = np.array([self.time[i][index] for i in range(self.time.shape[0])])
+                times = np.array([self.time[i][index] for i in range(self.time.__len__())])
                 datas = np.array([self.data[i][index] for i in range(self.data.shape[0])])
                 self.binned_time[index],self.average_data[index],self.variance[index] = average_scalar(times,datas,num_bins=num_bins,log_scale=log_scale)
                 self.average_data[index] = interpolate_empty_bins(self.average_data[index])

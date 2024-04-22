@@ -45,6 +45,7 @@ def compute(gillespie, output, step_tot, initial_check_steps, coarse_grained_ste
                         for i in range(step_tot // initial_check_steps)]
     if check_points[-1] != step_tot:
         check_points[-1] = step_tot
+    #check_points.insert(0,0)
     check_points = list(set(check_points))
     check_points.sort()
 
@@ -72,11 +73,15 @@ def compute(gillespie, output, step_tot, initial_check_steps, coarse_grained_ste
             for steps in range(coarse_grained_step):
                 move, time = gillespie.evolve()
                 for measurement in measurements.values():
-                    measurement.compute(time, move, i, t)
+                    if hasattr(measurement,'start_coarse_step'): # if it is a coarse measurement compute every steps
+                        measurement.compute(time, move, i, t)
                 time_track.compute(time, move)            
             for measurement in measurements.values():
                 if hasattr(measurement, 'end_coarse_step'):
                     measurement.end_coarse_step(i,t)
+            for measurement in measurements.values():
+                    if hasattr(measurement,'start_check_step'): # if it is a check_step measurement compute at the end of the coarse step
+                        measurement.compute(time, move, i, t)
             time_track.end_coarse_step()
             time_track.end_check_step(i, t)
         current_step += steps_to_next_checkpoint
@@ -218,7 +223,7 @@ def parallel_evolution(args, step_tot, check_steps,coarse_grained_step,filename,
     """
     Coordinate parallel execution of MSD evolution simulations.
     """
-    num_process = mp.cpu_count()
+    num_process = 10#mp.cpu_count()
     output = mp.Queue()
     inqueue = mp.Queue()
     

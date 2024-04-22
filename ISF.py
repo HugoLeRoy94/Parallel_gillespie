@@ -33,18 +33,29 @@ class ISF:
             self.q_vectors = q_norm * uniform_sphere_samples(num_q_samples)            
             self.gillespie = gillespie
             #self.isf_time = np.zeros((step_tot//check_steps,check_steps//coarse_grained_step),dtype=float)
-            self.isf_time = [np.zeros((end-start)//coarse_grained_steps, dtype=float) for start, end in zip([0]+log_check_points[:-1], log_check_points)]
+            #self.isf_time = [np.zeros((end-start)//coarse_grained_steps, dtype=float) for start, end in zip([0]+log_check_points[:-1], log_check_points)]
+            self.isf_time = [np.zeros((step_tot-initial_step)//coarse_grained_steps,dtype=float) for initial_step in [0]+log_check_points[:-1]]
+            self.initial_positions = np.zeros((log_check_points.__len__(),gillespie.Nlinker,3),dtype=float)  # one initial position per isf
+            self.next_index = 0 # index of the next isf to be computed
+            self.next_time=np.zeros((log_check_points.__len__()),dtype=int)  # adjust the index for each isf
         def compute(self,time,move,i,t,*args):
             try:
-                self.isf_time[i][t] = np.linalg.norm(Compute_Average_ISF(self.gillespie.get_r(periodic=True),self.initial_positions,self.q_vectors))
+                #self.isf_time[i][t] = np.linalg.norm(Compute_Average_ISF(self.gillespie.get_r(periodic=True),self.initial_positions,self.q_vectors))
+                for n in range(self.next_index):
+                    self.isf_time[n][self.next_time[n]] = np.linalg.norm(Compute_Average_ISF(self.gillespie.get_r(periodic=True),self.initial_positions[n],self.q_vectors))
+                    self.next_time[n]+=1
             except IndexError:
                 print(i)
                 print(t)
+                print(self.next_time)
                 print(len(self.isf_time))
                 print(self.isf_time[i].shape)
-                raise
+                #raise
         def start_check_step(self,*args):
-            self.initial_positions = copy.copy(self.gillespie.get_r(periodic=True))
+            #self.initial_positions = copy.copy(self.gillespie.get_r(periodic=True))
+            self.initial_positions[self.next_index] = copy.copy(self.gillespie.get_r(periodic=True))
+            self.next_index+=1
+            #print(self.next_time)
         def end_check_step(self,*args):
             return
         def close(self,output,*args):
