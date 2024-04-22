@@ -38,9 +38,8 @@ extern "C" {
             point_vector[i][2] = points[i * 3 + 2];
         }
 
-        // Clustering logic
+    // Initial clustering
         std::vector<std::vector<std::vector<float>>> clusters;
-
         for (const auto& point : point_vector) {
             bool added_to_cluster = false;
             for (auto& cluster : clusters) {
@@ -48,28 +47,66 @@ extern "C" {
                     if (euclidean_distance(point, cpoint) <= max_distance) {
                         cluster.push_back(point);
                         added_to_cluster = true;
-                        break;
+                        break; // Breaks only the inner loop
                     }
                 }
                 if (added_to_cluster) {
-                    break;
+                    continue; // Breaks only the inner loop
                 }
             }
             if (!added_to_cluster) {
                 clusters.push_back({ point });
             }
         }
-
-        // Calculate average cluster size
-        std::vector<float> cluster_sizes;
+        // Merge overlapping clusters
+        std::vector<std::set<std::vector<float>>> clusters_as_sets;
         for (const auto& cluster : clusters) {
+            std::set<std::vector<float>> cluster_set(cluster.begin(), cluster.end());
+            clusters_as_sets.push_back(cluster_set);
+        }
+        std::vector<std::vector<std::vector<float>>> merged_clusters;
+        while (!clusters_as_sets.empty()) {
+            auto first = clusters_as_sets.front();
+            clusters_as_sets.erase(clusters_as_sets.begin());
+
+            bool merged = true;
+            while (merged) {
+                merged = false;
+                auto it = clusters_as_sets.begin();
+                while (it != clusters_as_sets.end()) {
+                    bool overlaps = false;
+                    for (const auto& fpoint : first) {
+                        if (it->find(fpoint) != it->end()) {
+                            overlaps = true;
+                            break;
+                        }
+                    }
+
+                    if (overlaps) {
+                        first.insert(it->begin(), it->end());
+                        it = clusters_as_sets.erase(it);
+                        merged = true;
+                    } else {
+                        ++it;
+                    }
+                }
+            }
+
+            merged_clusters.push_back(std::vector<std::vector<float>>(first.begin(), first.end()));
+        }
+
+// Calculate average cluster size
+        std::vector<float> cluster_sizes;
+        for (const auto& cluster : merged_clusters) {
             cluster_sizes.push_back(cluster.size());
         }
-        float average_cluster_size = std::accumulate(cluster_sizes.begin(), cluster_sizes.end(), 0.0) / cluster_sizes.size();
+        float average_cluster_size = std::accumulate(
+            cluster_sizes.begin(), cluster_sizes.end(), 0.0
+        ) / cluster_sizes.size();
 
         // Calculate centroids and distances between them
         std::vector<std::vector<float>> centroids;
-        for (const auto& cluster : clusters) {
+        for (const auto& cluster : merged_clusters) {
             std::vector<float> centroid(3, 0.0);
             for (const auto& point : cluster) {
                 for (size_t j = 0; j < 3; j++) {
@@ -90,13 +127,16 @@ extern "C" {
                     distances.push_back(euclidean_distance(centroids[i], centroids[j]));
                 }
             }
-            average_distance_between_clusters = std::accumulate(distances.begin(), distances.end(), 0.0) / distances.size();
+            average_distance_between_clusters = std::accumulate(
+                distances.begin(), distances.end(), 0.0
+            ) / distances.size();
         }
 
-        ClusterStats stats;
-        stats.average_cluster_size = average_cluster_size;
-        stats.average_distance_between_clusters = average_distance_between_clusters;
+        // Return the clustering result with the calculated statistics
+        ClusterStats result;
+        result.average_cluster_size = average_cluster_size;
+        result.average_distance_between_clusters = average_distance_between_clusters;
 
-        return stats;
+        return result;
     }
 }
