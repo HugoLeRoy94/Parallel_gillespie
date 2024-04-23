@@ -1,3 +1,4 @@
+//g++ -shared -o clustering.so -fPIC -O3 clustering.cpp
 #include <vector>
 #include <cmath>
 #include <numeric>
@@ -50,9 +51,9 @@ extern "C" {
                         break; // Breaks only the inner loop
                     }
                 }
-                if (added_to_cluster) {
-                    continue; // Breaks only the inner loop
-                }
+                //if (added_to_cluster) {
+                //    continue; // Breaks only the inner loop
+                //}
             }
             if (!added_to_cluster) {
                 clusters.push_back({ point });
