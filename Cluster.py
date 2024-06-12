@@ -179,8 +179,8 @@ class Cluster:
         #clusters = cluster_points(gillespie.get_r(), max_distance)
         #self.prev_c_size = np.mean([len(c) for c in clusters])
         #self.prev_mean_distance = compute_mean_distance_between_clusters(clusters)
-        #self.prev_c_size,self.prev_mean_distance =hierarchical_clustering_with_stats(gillespie.get_r(),max_distance)
-        self.prev_c_size,self.prev_mean_distance =  c_size_distance(gillespie.get_r(),max_distance)
+        self.prev_c_size,self.prev_mean_distance =hierarchical_clustering_with_stats(gillespie.get_r(),max_distance)
+        #self.prev_c_size,self.prev_mean_distance =  c_size_distance(gillespie.get_r(),max_distance)
         self.prev_avg_nn_distance = compute_avg_nearest_neighbor_distance(gillespie.get_r())  # New metric
         self.gillespie = gillespie
         self.max_distance = max_distance
@@ -191,8 +191,8 @@ class Cluster:
         #clusters = cluster_points(self.gillespie.get_R(), self.max_distance)
         #c_size = np.mean([len(c) for c in clusters])
         #mean_distance = compute_mean_distance_between_clusters(clusters)
-        #c_size,mean_distance = hierarchical_clustering_with_stats(self.gillespie.get_r(),self.max_distance)
-        c_size,mean_distance = c_size_distance(self.gillespie.get_r(),self.max_distance)
+        c_size,mean_distance = hierarchical_clustering_with_stats(self.gillespie.get_r(),self.max_distance)
+        #c_size,mean_distance = c_size_distance(self.gillespie.get_r(),self.max_distance)
         avg_nn_distance = compute_avg_nearest_neighbor_distance(self.gillespie.get_r())
         self.av_c_size += self.prev_c_size * dt
         self.total_mean_distance += self.prev_mean_distance * dt if not np.isnan(self.prev_mean_distance) else 0

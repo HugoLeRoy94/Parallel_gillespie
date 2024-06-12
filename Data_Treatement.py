@@ -129,7 +129,8 @@ class Data_Treatement:
         self.Nsample = len(self.Read.list_groups())
         self.Read.close()
     def average(self,num_bins=100,log_scale=False):
-        if np.any(self.data==None):
+        #if np.any(self.data==None):
+        if np.any([x is None for x in self.data]):
             print('Nones founds in the array, certainly due to defective seeds, we remove it before averaging')
             self.data = self.data[self.data!=None]
         if self.data_type == 'cluster':
