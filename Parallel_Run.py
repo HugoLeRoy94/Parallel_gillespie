@@ -42,7 +42,7 @@ def compute(gillespie, output, step_tot, initial_check_steps, coarse_grained_ste
                         for i in range(int(max_exponent) + 1)]
     else:
         check_points = [int(round(initial_check_steps / coarse_grained_step * i) * coarse_grained_step)
-                        for i in range(step_tot // initial_check_steps)]
+                        for i in range(1,step_tot // initial_check_steps+1)]
     if check_points[-1] != step_tot:
         check_points[-1] = step_tot
     #check_points.insert(0,0)
@@ -55,7 +55,7 @@ def compute(gillespie, output, step_tot, initial_check_steps, coarse_grained_ste
         if include:
             Class, args = measurement_args[key]
             measurements[key] = Class(step_tot, check_points, coarse_grained_step, gillespie, *args)
-    
+
     time_track = Time(step_tot, check_points, coarse_grained_step, gillespie)
     
     current_step = 0
