@@ -128,7 +128,7 @@ class Data_Treatement:
             self.time = [[t_sys[-isf.__len__():] - t_sys[-isf.__len__()] for isf in system]for  t_sys,system in zip(coarse_time,self.data)]
         self.Nsample = len(self.Read.list_groups())
         self.Read.close()
-    def average(self,num_bins=100,log_scale=False):
+    def average(self,num_bins=100,log_scale=False,min_bin_val = None):
         #if np.any(self.data==None):
         if np.any([x is None for x in self.data]):
             print('Nones founds in the array, certainly due to defective seeds, we remove it before averaging')
@@ -136,23 +136,23 @@ class Data_Treatement:
         if self.data_type == 'cluster':
             self.variance,self.average_data = np.zeros((num_bins,3)),np.zeros((num_bins,3))
             for i in range(3):
-                self.binned_time,self.average_data[:,i],self.variance[:,i] = average_scalar(self.time,self.data[:,:,i],num_bins,log_scale=log_scale)
+                self.binned_time,self.average_data[:,i],self.variance[:,i] = average_scalar(self.time,self.data[:,:,i],num_bins,log_scale=log_scale,min_bin_val=min_bin_val)
                 self.average_data[:,i] = interpolate_empty_bins(self.average_data[:,i])
             #self.binned_time,self.average_data,self.variance,self.distribution = average_scalar(self.time,self.data,num_bins)
         elif self.data_type in {'NRG','MSD_tot','Coarse_Time','Entropy'}:
-                self.binned_time,self.average_data,self.variance = average_scalar(self.time,self.data,num_bins,log_scale=log_scale)
+                self.binned_time,self.average_data,self.variance = average_scalar(self.time,self.data,num_bins,log_scale=log_scale,min_bin_val=min_bin_val)
                 self.average_data = interpolate_empty_bins(self.average_data)
         elif self.data_type in {'PCF','PCF_L'}:
             self.binned_time,self.average_data,self.variance = np.zeros((self.data.shape[1],self.data.shape[2]),dtype=float),np.zeros((self.data.shape[1],self.data.shape[2]),dtype=float),np.zeros((self.data.shape[1],self.data.shape[2]),dtype=float)
             for index in range(self.data.shape[1]): # loop over the different timesteps
-                self.binned_time[index],self.average_data[index],self.variance[index] = average_scalar(self.data[:,index,:,0],self.data[:,index,:,1],num_bins=self.data.shape[2],log_scale=log_scale)
+                self.binned_time[index],self.average_data[index],self.variance[index] = average_scalar(self.data[:,index,:,0],self.data[:,index,:,1],num_bins=self.data.shape[2],log_scale=log_scale,min_bin_val=min_bin_val)
                 self.average_data[index] = interpolate_empty_bins(self.average_data[index])
         elif self.data_type in {'MSD','ISF'}:
             self.binned_time,self.average_data,self.variance = np.zeros((len(self.data[0]),num_bins),dtype=float),np.zeros((len(self.data[0]),num_bins),dtype=float),np.zeros((len(self.data[0]),num_bins),dtype=float)
             for index in range(len(self.data[0])):
                 times = np.array([self.time[i][index] for i in range(self.time.__len__())])
                 datas = np.array([self.data[i][index] for i in range(self.data.shape[0])])
-                self.binned_time[index],self.average_data[index],self.variance[index] = average_scalar(times,datas,num_bins=num_bins,log_scale=log_scale)
+                self.binned_time[index],self.average_data[index],self.variance[index] = average_scalar(times,datas,num_bins=num_bins,log_scale=log_scale,min_bin_val=min_bin_val)
                 self.average_data[index] = interpolate_empty_bins(self.average_data[index])
         else:
             raise IndexError('data-type does not correspond to any known average')
@@ -242,18 +242,22 @@ class Data_Treatement:
 #                variance_scalar[i] = 0
 #
 #    return bin_centers, average_scalar, variance_scalar
-def average_scalar(X, Y, num_bins=100, log_scale=False, min_bin_size=1):
+def average_scalar(X, Y, num_bins=100, log_scale=False, min_bin_val=None):
     # Ensure X is at least 2D
     X = np.atleast_2d(X)
     Y = np.atleast_2d(Y)
     
     # Adjust X for logarithmic scale if requested
     if log_scale:
-        X = np.maximum(X, min_bin_size)
+        if min_bin_val:
+            X = np.maximum (X, min_bin_val)
         bins = np.logspace(np.log10(X.min()), np.log10(X.max()), num_bins + 1)
     else:
         bins = np.linspace(X.min(), X.max(), num_bins + 1)
-    
+    #print(bins)
+    #print(X.min())
+    #print(np.log10(X.min()))
+
     bin_centers = (bins[:-1] + bins[1:]) / 2
     if log_scale:
         bin_centers = np.sqrt(bins[:-1] * bins[1:])

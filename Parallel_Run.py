@@ -223,7 +223,7 @@ def parallel_evolution(args, step_tot, check_steps,coarse_grained_step,filename,
     """
     Coordinate parallel execution of MSD evolution simulations.
     """
-    num_process = 10#mp.cpu_count()
+    num_process = args.__len__()#mp.cpu_count()
     output = mp.Queue()
     inqueue = mp.Queue()
     
