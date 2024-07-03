@@ -218,7 +218,12 @@ def initialize_gillespie(ell_tot, Energy, kdiff, seed, Nlinker, dimension):
     # Assuming gil.Gillespie is the correct way to initialize your Gillespie object
     return gil.Gillespie(ell_tot=ell_tot, rho0=0., BindingEnergy=Energy, kdiff=kdiff,
                          seed=seed, sliding=False, Nlinker=Nlinker, old_gillespie=None, dimension=dimension)
-
+def seed_check(args):
+    seeds = set()
+    for arg in args:
+        seeds.add(arg[3])
+    if seeds.__len__() != args.__len__():
+        print('not all the seeds are unique. Array creation in the h5 file will overlap !!')
 def parallel_evolution(args, step_tot, check_steps,coarse_grained_step,filename,measurement_args,measurement_flags,log_base):
     """
     Coordinate parallel execution of MSD evolution simulations.
@@ -228,6 +233,7 @@ def parallel_evolution(args, step_tot, check_steps,coarse_grained_step,filename,
     inqueue = mp.Queue()
     
     header = make_header(args, [step_tot, check_steps,coarse_grained_step,measurement_args,measurement_flags,log_base])
+    seed_check(args)
     proc = mp.Process(target=handle_output, args=(output, filename, header))
     proc.start()
     
